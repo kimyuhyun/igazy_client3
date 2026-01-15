@@ -1,0 +1,503 @@
+import React, { useState, useEffect, useMemo } from "react";
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Title,
+    Tooltip,
+    Legend,
+} from "chart.js";
+import { verticalLinePlugin } from "../utils/verticalLinePlugin";
+import { Line } from "react-chartjs-2";
+import { analyzeHidePatternsFromProcessedData } from "../utils/hideRegionAnalyzer";
+import { prepareVisualizationData, prepareVisualizationDataInt } from "../utils/chartDataProcessor";
+import useVariableStore from "../stores/useVariableStore";
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, verticalLinePlugin);
+
+// 배경 플러그인을 컴포넌트 외부로 이동
+const backgroundColorPlugin = {
+    id: "backgroundColorPlugin",
+    beforeDraw: (chart, args, options) => {
+        const {
+            ctx,
+            chartArea: { left, right, top, bottom, width, height },
+            scales: { x, y },
+        } = chart;
+
+        // 플러그인 옵션에서 데이터 가져오기
+        const data = options.processedData;
+
+        if (!data) return;
+
+        ctx.save();
+
+        // OD isHide 데이터로 빨간 배경 그리기
+        if (data[1] && Array.isArray(data[1].isHide)) {
+            data[1].isHide.forEach((isHide, index) => {
+                if (isHide) {
+                    const xStart = x.getPixelForValue(index);
+                    const xEnd = x.getPixelForValue(index + 1);
+
+                    ctx.fillStyle = "rgba(255, 0, 0, 0.3)";
+                    ctx.fillRect(xStart, top, xEnd - xStart, height);
+                }
+            });
+        }
+
+        // OS isHide 데이터로 파란 배경 그리기
+        if (data[0] && Array.isArray(data[0].isHide)) {
+            data[0].isHide.forEach((isHide, index) => {
+                if (isHide) {
+                    const xStart = x.getPixelForValue(index);
+                    const xEnd = x.getPixelForValue(index + 1);
+
+                    ctx.fillStyle = "rgba(0, 0, 255, 0.2)";
+                    ctx.fillRect(xStart, top, xEnd - xStart, height);
+                }
+            });
+        }
+
+        ctx.restore();
+    },
+};
+
+// 중간값 점을 그려준다.
+const dataLabelPlugin = {
+    id: "highlightDataLabel",
+    afterDatasetsDraw(chart, args, options) {
+        const {
+            ctx,
+            data,
+            scales: { x, y },
+        } = chart;
+
+        const { highlightIndices, axis } = options;
+        if (!highlightIndices || !axis) return;
+
+        ctx.save();
+        ctx.font = "12px";
+        ctx.textAlign = "center";
+
+        data.datasets.forEach((dataset, datasetIndex) => {
+            const eye = datasetIndex === 0 ? "od" : "os"; // OD는 첫 번째, OS는 두 번째
+            const indices = highlightIndices[axis][eye];
+
+            console.log("@@@@", indices);
+
+            dataset.data.forEach((value, index) => {
+                if (indices.includes(index)) {
+                    const xPos = x.getPixelForValue(index);
+                    const yPos = y.getPixelForValue(value);
+
+                    const text = value.toFixed(3);
+                    const textWidth = ctx.measureText(text).width;
+                    const padding = 4;
+
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+                    ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+                    ctx.lineWidth = 1;
+
+                    const boxWidth = textWidth + padding * 2;
+                    const boxHeight = 16;
+                    const boxX = xPos - boxWidth / 2;
+                    const boxY = yPos - 25;
+
+                    ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+                    ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+
+                    ctx.fillStyle = "black";
+                    ctx.font = "12px";
+                    ctx.fillText(text, xPos, yPos - 12);
+                }
+            });
+        });
+
+        ctx.restore();
+    },
+};
+
+// 상수 정의
+const LEFT = 0;
+const RIGHT = 1;
+const X_AXIS = 0;
+const Y_AXIS = 1;
+
+export default function LiveGraph({ odResults = [], osResults = [], maxFrame = 0, currentFrameRef }) {
+    const { MAX_FRAME, DISTANCE, ANGLE, PATIENT_NUM, PATIENT_NAME, LIMBUS_MM, LIMBUS_PX } = useVariableStore();
+
+    const actualMaxFrame = maxFrame || MAX_FRAME;
+    const isDarkMode = document.documentElement.classList.contains("dark");
+    const [renderedFrame, setRenderedFrame] = useState(0);
+
+    // 중간값의 프레임 인덱스(포인트를 찍기위해서)
+    const [highlightIndices, setHighlightIndices] = useState({
+        x: {
+            od: [],
+            os: [],
+        },
+        y: {
+            od: [],
+            os: [],
+        },
+    });
+
+    // 각 구간의 중간값
+    const [medianResult, setMedianResult] = useState({});
+
+    // 플러그인 등록
+    useEffect(() => {
+        if (!ChartJS.registry.plugins.get("backgroundColorPlugin")) {
+            ChartJS.register(backgroundColorPlugin);
+        }
+        if (!ChartJS.registry.plugins.get("highlightDataLabel")) {
+            ChartJS.register(dataLabelPlugin);
+        }
+    }, []);
+
+    // 배열 데이터를 직접 처리 (useMemo로 성능 최적화)
+    const odXData = useMemo(() => {
+        if (!odResults || odResults.length === 0) return [];
+        return odResults.map((result) => {
+            if (result && result.x !== undefined) {
+                return result.x;
+            }
+            return 0;
+        });
+    }, [odResults]);
+
+    const osXData = useMemo(() => {
+        if (!osResults || osResults.length === 0) return [];
+        return osResults.map((result) => {
+            if (result && result.x !== undefined) {
+                return result.x;
+            }
+            return 0;
+        });
+    }, [osResults]);
+
+    const odYData = useMemo(() => {
+        if (!odResults || odResults.length === 0) return [];
+        return odResults.map((result) => {
+            if (result && result.y !== undefined) {
+                return result.y;
+            }
+            return 0;
+        });
+    }, [odResults]);
+
+    const osYData = useMemo(() => {
+        if (!osResults || osResults.length === 0) return [];
+        return osResults.map((result) => {
+            if (result && result.y !== undefined) {
+                return result.y;
+            }
+            return 0;
+        });
+    }, [osResults]);
+
+    const osIsHideData = useMemo(() => {
+        if (!osResults || osResults.length === 0) return false;
+        return osResults.map((result) => {
+            if (result && result.is_hide === true) {
+                return true;
+            }
+            return false;
+        });
+    }, [osResults]);
+
+    const odIsHideData = useMemo(() => {
+        if (!odResults || odResults.length === 0) return false;
+        return odResults.map((result) => {
+            if (result && result.is_hide === true) {
+                return true;
+            }
+            return false;
+        });
+    }, [odResults]);
+
+    // 전처리된 데이터 계산 (isHide 데이터 포함)
+    const processedData = useMemo(() => {
+        const rawData = {
+            left: {
+                x: osXData,
+                y: osYData,
+            },
+            right: {
+                x: odXData,
+                y: odYData,
+            },
+        };
+
+        // const newData = prepareVisualizationData(rawData);
+        const newData = prepareVisualizationDataInt(rawData);
+
+        newData[LEFT].isHide = osIsHideData;
+        newData[RIGHT].isHide = odIsHideData;
+
+        return newData;
+    }, [odXData, osXData, odYData, osYData, osIsHideData, odIsHideData]);
+
+    // processedData가 준비된 후 분석 실행
+    useEffect(() => {
+        if (processedData[RIGHT][X_AXIS].length < parseInt(actualMaxFrame) - 10) {
+            return;
+        }
+
+        if (processedData && processedData[LEFT] && processedData[RIGHT]) {
+            const analysisResults = analyzeHidePatternsFromProcessedData(processedData);
+            console.log("분석 결과:", analysisResults);
+
+            // 1구간이 존재하는 경우만 처리
+            if (analysisResults && analysisResults.length > 0 && analysisResults[0]) {
+                // 중간 값 저장 해놓는다.
+                setMedianResult(analysisResults);
+
+                setHighlightIndices((prevIndices) => {
+                    const odXIndices = [...prevIndices.x.od];
+                    const osXIndices = [...prevIndices.x.os];
+                    const odYIndices = [...prevIndices.y.od];
+                    const osYIndices = [...prevIndices.y.os];
+
+                    analysisResults.forEach((result) => {
+                        if (result.odXMedianIdx !== null && !odXIndices.includes(result.odXMedianIdx)) {
+                            odXIndices.push(result.odXMedianIdx);
+                        }
+                        if (result.osXMedianIdx !== null && !osXIndices.includes(result.osXMedianIdx)) {
+                            osXIndices.push(result.osXMedianIdx);
+                        }
+                        if (result.odYMedianIdx !== null && !odYIndices.includes(result.odYMedianIdx)) {
+                            odYIndices.push(result.odYMedianIdx);
+                        }
+                        if (result.osYMedianIdx !== null && !osYIndices.includes(result.osYMedianIdx)) {
+                            osYIndices.push(result.osYMedianIdx);
+                        }
+                    });
+
+                    return {
+                        x: { od: odXIndices, os: osXIndices },
+                        y: { od: odYIndices, os: osYIndices },
+                    };
+                });
+            }
+        }
+    }, [processedData]);
+
+    // 슬라이더 조작에 따라 주기적으로 업데이트
+    useEffect(() => {
+        if (!currentFrameRef) return;
+
+        const interval = setInterval(() => {
+            setRenderedFrame(currentFrameRef.current);
+        }, 16); // 60fps
+
+        // Cleanup: 컴포넌트 언마운트 또는 currentFrameRef 변경 시 interval 정리
+        return () => {
+            clearInterval(interval);
+        };
+    }, [currentFrameRef]);
+
+    const getPointConfig = (dataArray, axis, eye, color = "blue") => {
+        const indices = highlightIndices[axis][eye];
+        return {
+            pointRadius: dataArray.map((_, index) => (indices.includes(index) ? 5 : 0)),
+            pointBackgroundColor: dataArray.map((_, index) => (indices.includes(index) ? color : "transparent")),
+            pointBorderColor: dataArray.map((_, index) => (indices.includes(index) ? color : "transparent")),
+            pointBorderWidth: dataArray.map((_, index) => (indices.includes(index) ? 2 : 0)),
+        };
+    };
+
+    // 차트 데이터는 전처리된 데이터 사용
+    const chartDataX = {
+        labels: Array.from({ length: processedData[LEFT][X_AXIS].length }, (_, i) => i),
+        datasets: [
+            {
+                label: "OD",
+                data: processedData[RIGHT][X_AXIS],
+                borderColor: "red",
+                backgroundColor: "rgba(255,0,0,0.1)",
+                borderWidth: 1,
+                ...getPointConfig(processedData[RIGHT][X_AXIS], "x", "od", "red"),
+            },
+            {
+                label: "OS",
+                data: processedData[LEFT][X_AXIS],
+                borderColor: "blue",
+                backgroundColor: "rgba(0,0,255,0.1)",
+                borderWidth: 1,
+                ...getPointConfig(processedData[LEFT][X_AXIS], "x", "os", "blue"),
+            },
+        ],
+    };
+
+    const chartDataY = {
+        labels: Array.from({ length: processedData[LEFT][Y_AXIS].length }, (_, i) => i),
+        datasets: [
+            {
+                label: "OD",
+                data: processedData[RIGHT][Y_AXIS],
+                borderColor: "red",
+                backgroundColor: "rgba(255,0,0,0.1)",
+                borderWidth: 1,
+                ...getPointConfig(processedData[RIGHT][Y_AXIS], "y", "od", "red"),
+            },
+            {
+                label: "OS",
+                data: processedData[LEFT][Y_AXIS],
+                borderColor: "blue",
+                backgroundColor: "rgba(0,0,255,0.1)",
+                borderWidth: 1,
+                ...getPointConfig(processedData[LEFT][Y_AXIS], "y", "os", "blue"),
+            },
+        ],
+    };
+
+    const chartOptionsX = useMemo(
+        () => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 1 },
+            plugins: {
+                legend: { display: false },
+                title: { display: false },
+                verticalLine: {
+                    frame: renderedFrame,
+                },
+                backgroundColorPlugin: {
+                    processedData: processedData,
+                },
+            },
+            scales: {
+                x: {
+                    type: "linear",
+                    min: 0,
+                    max: parseInt(actualMaxFrame),
+                    ticks: {
+                        stepSize: 30,
+                        display: false, // x축 숫자 숨기기
+                    },
+                    grid: {
+                        color: isDarkMode ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)",
+                        display: false, // x축 그리드 제거
+                    },
+                },
+                y: {
+                    min: -90,
+                    max: 90,
+                    ticks: { stepSize: 10 },
+                    grid: {
+                        color: isDarkMode ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)",
+                    },
+                },
+            },
+        }),
+        [renderedFrame, isDarkMode, actualMaxFrame, processedData, highlightIndices]
+    );
+
+    const chartOptionsY = useMemo(
+        () => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 1,
+            },
+            plugins: {
+                legend: {
+                    display: false,
+                    position: "top",
+                },
+                title: {
+                    text: "Y-Axis",
+                    display: false,
+                },
+                verticalLine: {
+                    frame: renderedFrame,
+                },
+                backgroundColorPlugin: {
+                    processedData: processedData,
+                },
+            },
+            scales: {
+                x: {
+                    type: "linear",
+                    min: 0,
+                    max: parseInt(actualMaxFrame),
+                    grid: {
+                        color: isDarkMode ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)",
+                        display: false, // x축 그리드 제거
+                    },
+                    ticks: {
+                        stepSize: 30,
+                        display: false, // x축 숫자 숨기기
+                    },
+                },
+                y: {
+                    min: -90,
+                    max: 90,
+                    ticks: { stepSize: 10 },
+                    grid: {
+                        color: isDarkMode ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)",
+                    },
+                },
+            },
+        }),
+        [renderedFrame, isDarkMode, actualMaxFrame, processedData, highlightIndices]
+    );
+
+    const showPDRport = async () => {
+        localStorage.setItem("ODResultsData", JSON.stringify(odResults));
+        localStorage.setItem("OSResultsData", JSON.stringify(osResults));
+        localStorage.setItem("PDReportData", JSON.stringify(medianResult));
+        window.open(
+            `/pd_report?patient_num=${PATIENT_NUM}&patient_name=${PATIENT_NAME}&distance=${DISTANCE}&angle=${ANGLE}&limbus_mm=${LIMBUS_MM}&limbus_px=${LIMBUS_PX}`,
+            "_blank"
+        );
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="bg-white dark:bg-black p-0 text-xs">
+                <div className="relative flex flex-row justify-between items-center">
+                    <div className="flex items-center">
+                        <div className="bg-red-400 size-3" />
+                        <div className="ml-1">OD</div>
+                        <div className="bg-blue-500 size-3 ml-4" />
+                        <div className="ml-1">OS</div>
+                    </div>
+                    <div className="absolute left-1/2 -translate-x-1/2 font-semibold">X-Axis(px)</div>
+
+                    {medianResult.length >= 6 && currentFrameRef != null && (
+                        <button
+                            type="button"
+                            className="bg-green-400 hover:bg-green-600 text-white rounded px-2 py-1"
+                            onClick={() => showPDRport()}
+                        >
+                            결과보기
+                        </button>
+                    )}
+                </div>
+                <div className="h-[260px] pr-1">
+                    <Line data={chartDataX} options={chartOptionsX} />
+                </div>
+            </div>
+
+            <div className="bg-white dark:bg-black p-0 text-xs">
+                <div className="relative flex flex-row justify-between items-center">
+                    <div className="flex items-center">
+                        <div className="bg-red-400 size-3" />
+                        <div className="ml-1">OD</div>
+                        <div className="bg-blue-500 size-3 ml-4" />
+                        <div className="ml-1">OS</div>
+                    </div>
+                    <div className="absolute left-1/2 -translate-x-1/2 font-semibold">Y-Axis(px)</div>
+                    <div className="w-20" />
+                </div>
+                <div className="h-[260px] pr-1">
+                    <Line data={chartDataY} options={chartOptionsY} />
+                </div>
+            </div>
+        </div>
+    );
+}

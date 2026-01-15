@@ -1,0 +1,92 @@
+/* index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 얇은 스크롤바 스타일 */
+.scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(203 213 225) rgb(241 245 249);
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+    background: rgb(241 245 249);
+    border-radius: 0px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgb(203 213 225);
+    border-radius: 0px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgb(148 163 184);
+}
+
+/* 다크모드 */
+.dark .scrollbar-thin {
+    scrollbar-color: rgb(87 83 78) rgb(41 37 36);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-track {
+    background: rgb(41 37 36);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgb(87 83 78);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgb(120 113 108);
+}
+
+/* 매우 얇은 스크롤바 */
+.scrollbar-ultra-thin::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+}
+
+.scrollbar-ultra-thin::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scrollbar-ultra-thin::-webkit-scrollbar-thumb {
+    background: rgb(203 213 225);
+    border-radius: 0px;
+}
+
+.scrollbar-ultra-thin::-webkit-scrollbar-thumb:hover {
+    background: rgb(148 163 184);
+}
+
+.dark .scrollbar-ultra-thin::-webkit-scrollbar-thumb {
+    background: rgb(87 83 78);
+}
+
+.dark .scrollbar-ultra-thin::-webkit-scrollbar-thumb:hover {
+    background: rgb(120 113 108);
+}
+
+@media print {
+    .a4-page {
+        break-after: page;
+    }
+
+    /* 마지막 a4-page는 페이지 나눔 제거 */
+    .a4-page:last-child {
+        break-after: auto;
+    }
+
+    /* 배경색 강제 인쇄 */
+    body,
+    * {
+        print-color-adjust: exact !important;
+        -webkit-print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+}
