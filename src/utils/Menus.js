@@ -21,24 +21,14 @@ const menu = [
     },
     // {
     //     icon: "",
-    //     title: "OD(X)보정테이블",
-    //     link: "/od_cali_table",
+    //     title: "Xaxis 보정테이블",
+    //     link: "/x_axis_cali",
     // },
+
     // {
     //     icon: "",
-    //     title: "TAN 보정테이블",
-    //     link: "/tan_cali_table",
+    //     title: "측정 테스트",
+    //     link: "/kyh_test",
     // },
-    {
-        icon: "",
-        title: "Xaxis 보정테이블",
-        link: "/x_axis_cali",
-    },
-
-    {
-        icon: "",
-        title: "측정 테스트",
-        link: "/kyh_test",
-    },
 ];
 export default menu;
