@@ -13,7 +13,7 @@ import XaxisCali from "./pages/XaxisCali";
 function App() {
     return (
         <>
-            <BrowserRouter basename={import.meta.env.DEV ? '/' : '/igazy_client3'}>
+            <BrowserRouter basename="/igazy_client3">
                 <Routes>
                     <Route path="/" element={<Measure />} />
                     <Route path="/measure" element={<Measure />} />
