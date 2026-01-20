@@ -54,6 +54,7 @@ const DualLiveFrame = () => {
 
     const getCamToEyeDistance = async () => {
         try {
+            console.log('[DEBUG] Calling API:', `${API_URL}/api/limbus_detect`);
             const { data } = await axios({
                 url: `${API_URL}/api/limbus_detect`,
                 method: "GET",
@@ -62,7 +63,10 @@ const DualLiveFrame = () => {
                 },
             });
 
+            console.log('[DEBUG] API Response:', data);
+
             if (data.error) {
+                console.error('[ERROR] Server returned error:', data.error);
                 toast.error("윤부를 찾을 수 없습니다.");
                 if (odCanvasRef.current) {
                     const base64 = odCanvasRef.current.toDataURL("image/jpeg").split(",")[1];
@@ -74,12 +78,27 @@ const DualLiveFrame = () => {
                 // === 윤부 정보 ===
                 const limbusRealMM = LIMBUS_MM; // 13.81;
                 const limbusPxDiameter = data.pxDiameter; // 서버에서 받은 픽셀 지름
+
+                console.log('[DEBUG] Calculation inputs:', {
+                    LIMBUS_MM,
+                    limbusRealMM,
+                    limbusPxDiameter,
+                    K: 410
+                });
+
                 const distanceMM = calcMM(limbusRealMM, limbusPxDiameter);
+                console.log('[DEBUG] Calculated distance:', distanceMM, 'mm');
                 setDistance(Number(distanceMM.toFixed(0)));
                 setDistanceResultImage(`data:image/jpeg;base64,${data.frameBase64}`);
             }
         } catch (error) {
-            toast.error(error.response.data.error);
+            console.error('[ERROR] API call failed:', error);
+            console.error('[ERROR] Error details:', {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status,
+            });
+            toast.error(error.response?.data?.error || error.message || "API 호출 실패");
         }
     };
 
