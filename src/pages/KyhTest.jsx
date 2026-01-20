@@ -16,7 +16,7 @@ export default function KyhTest() {
     const { IP, DISTANCE, setDistance, LIMBUS_MM } = useVariableStore();
 
     const API_URL = `http://${IP}:8080`;
-    const SOCKET_URL = `ws://${IP}:3000`;
+    const SOCKET_URL = `wss://${IP}:3000`;
 
     const wsClientRef = useRef(null);
     if (!wsClientRef.current) {
