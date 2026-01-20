@@ -78,14 +78,6 @@ const DualLiveFrame = () => {
                 // === 윤부 정보 ===
                 const limbusRealMM = LIMBUS_MM; // 13.81;
                 const limbusPxDiameter = data.pxDiameter; // 서버에서 받은 픽셀 지름
-
-                console.log('[DEBUG] Calculation inputs:', {
-                    LIMBUS_MM,
-                    limbusRealMM,
-                    limbusPxDiameter,
-                    K: 410
-                });
-
                 const distanceMM = calcMM(limbusRealMM, limbusPxDiameter);
                 console.log('[DEBUG] Calculated distance:', distanceMM, 'mm');
                 setDistance(Number(distanceMM.toFixed(0)));
