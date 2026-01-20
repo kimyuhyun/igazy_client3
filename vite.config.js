@@ -5,6 +5,7 @@ import tailwindcss from "tailwindcss";
 import autoprefixer from "autoprefixer";
 
 export default defineConfig({
+    base: '/igazy_client3/',
     plugins: [react()],
     build: {
         outDir: "./docs",
