@@ -218,7 +218,7 @@ export default function Measure() {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                timeout: 3000,
+                timeout: 1000,
             });
             toast.success("소켓 연결 해제");
         } catch (error) {
@@ -240,7 +240,7 @@ export default function Measure() {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                timeout: 3000,
+                timeout: 1000,
             });
             console.log(data);
             toast.success("연결확인");
@@ -262,7 +262,7 @@ export default function Measure() {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                timeout: 5000,
+                timeout: 1000,
             });
             console.log(data);
         } catch (error) {
@@ -284,7 +284,7 @@ export default function Measure() {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                timeout: 5000,
+                timeout: 1000,
             });
             console.log(data);
         } catch (error) {
