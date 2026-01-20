@@ -125,7 +125,7 @@ const RIGHT = 1;
 const X_AXIS = 0;
 const Y_AXIS = 1;
 
-export default function LiveGraph({ odResults = [], osResults = [], maxFrame = 0, currentFrameRef }) {
+const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, currentFrameRef }) => {
     const { MAX_FRAME, DISTANCE, ANGLE, PATIENT_NUM, PATIENT_NAME, LIMBUS_MM, LIMBUS_PX } = useVariableStore();
 
     const actualMaxFrame = maxFrame || MAX_FRAME;
@@ -500,4 +500,8 @@ export default function LiveGraph({ odResults = [], osResults = [], maxFrame = 0
             </div>
         </div>
     );
-}
+});
+
+LiveGraph.displayName = "LiveGraph";
+
+export default LiveGraph;

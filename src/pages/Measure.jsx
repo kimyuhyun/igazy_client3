@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import axios from "axios";
 import useLoadingStore from "../stores/useLoadingStore";
 
@@ -61,11 +61,11 @@ export default function Measure() {
         };
     }, []);
 
-    // 슬라이더 프레임 변경
-    const handleSliderFrameChange = (frameIndex) => {
+    // 슬라이더 프레임 변경 (메모이제이션)
+    const handleSliderFrameChange = useCallback((frameIndex) => {
         videoRef.current.setFrame(frameIndex);
         currentFrameRef.current = frameIndex;
-    };
+    }, []);
 
     function saveUsrInfo() {
         if (PATIENT_NUM === "") {
@@ -103,6 +103,32 @@ export default function Measure() {
 
         setMode("pupil");
     };
+
+    // DualDetectorFrame 콜백 함수들 (메모이제이션)
+    const handleEnded = useCallback((success) => {
+        setEnded(success);
+    }, []);
+
+    const handleOdResults = useCallback((data) => {
+        setOdResults((prev) => [...prev, data]);
+    }, []);
+
+    const handleOsResults = useCallback((data) => {
+        setOsResults((prev) => [...prev, data]);
+    }, []);
+
+    // Popup 닫기 핸들러들 (메모이제이션)
+    const handleCloseViewMode = useCallback(() => {
+        setMode("stop");
+    }, []);
+
+    const handleClosePupilMode = useCallback(() => {
+        setMode("stop");
+    }, []);
+
+    const handleCloseUsrInfoPopup = useCallback(() => {
+        setUsrInfoPopup(false);
+    }, []);
 
     async function videoSave() {
         if (PATIENT_NUM === "") {
@@ -183,6 +209,25 @@ export default function Measure() {
         }
     }
 
+    const handleSocketDisconnect = async () => {
+        try {
+            setLoading(true);
+            const { data } = await axios({
+                url: `${API_URL}/api/socket/disconnect`,
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                timeout: 3000,
+            });
+            toast.success("소켓 연결 해제");
+        } catch (error) {
+            toast.error("소켓 연결 해제 실패");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleStopStream = async () => {
         try {
             setLoading(true);
@@ -195,11 +240,12 @@ export default function Measure() {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                timeout: 5000,
+                timeout: 3000,
             });
             console.log(data);
+            toast.success("연결확인");
         } catch (error) {
-            toast.error(error.message);
+            toast.error("타임아웃 3초, 핫스팟 연결을 확인해 주세요.");
         } finally {
             setLoading(false);
         }
@@ -261,7 +307,16 @@ export default function Measure() {
 
     return (
         <Layout>
-            <div className="flex flex-col justify-center min-h-[80vh]">
+            <div className="flex flex-col justify-between min-h-[80vh]">
+                <div className="flex justify-start">
+                    <button
+                        onClick={handleSocketDisconnect}
+                        className="px-4 py-2 rounded text-red-400 text-xs hover:bg-red-500 hover:text-white transition-all duration-300">
+                        소켓 연결 해제
+                    </button>
+
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* 환저정보 입력 */}
                     <button
@@ -331,25 +386,24 @@ export default function Measure() {
                         <p className="text-slate-600 dark:text-slate-400">측정된 영상을 저장</p>
                     </button>
                 </div>
+
+                {/* dummy */}
+                <div className="grid grid-cols-1 gap-8"></div>
             </div>
 
             {mode === "view" && (
-                <VideoPopup onClose={() => setMode("stop")}>
+                <VideoPopup onClose={handleCloseViewMode}>
                     <DualLiveFrame key={`view-${componentKey}`} />
                 </VideoPopup>
             )}
 
             {mode === "pupil" && (
-                <VideoPopup
-                    onClose={() => {
-                        setMode("stop");
-                    }}
-                >
+                <VideoPopup onClose={handleClosePupilMode}>
                     <DualDetectorFrame
                         key={`view-${componentKey}`}
-                        onEnded={(success) => setEnded(success)}
-                        onOdResults={(data) => setOdResults((prev) => [...prev, data])}
-                        onOsResults={(data) => setOsResults((prev) => [...prev, data])}
+                        onEnded={handleEnded}
+                        onOdResults={handleOdResults}
+                        onOsResults={handleOsResults}
                         ref={videoRef}
                     />
 
@@ -379,7 +433,7 @@ export default function Measure() {
             )}
 
             {usrInfoPopup && (
-                <Popup width="xl" height="h-fit" onClose={() => setUsrInfoPopup(false)}>
+                <Popup width="xl" height="h-fit" onClose={handleCloseUsrInfoPopup}>
                     <div className="flex flex-col">
                         <label className="mb-1 font-semibold text-gray-700 dark:text-gray-200">환자번호</label>
                         <input
