@@ -7,7 +7,7 @@ import autoprefixer from "autoprefixer";
 export default defineConfig({
     plugins: [react()],
     build: {
-        outDir: "./public",
+        outDir: "./docs",
     },
     css: {
         postcss: {
