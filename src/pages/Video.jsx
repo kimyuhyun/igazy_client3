@@ -70,6 +70,7 @@ export default function Video() {
                 headers: {
                     "Content-Type": "application/json",
                 },
+                timeout: 1000,
             });
             console.log(data);
 

@@ -8,7 +8,7 @@ export default defineConfig({
     base: "/igazy_client3/",
     plugins: [react()],
     build: {
-        outDir: "./docs",
+        outDir: "./dist",
     },
     css: {
         postcss: {
