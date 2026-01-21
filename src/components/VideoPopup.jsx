@@ -7,6 +7,7 @@ export default function VideoPopup({ children, onClose }) {
     const { POPUP_WIDTH_INDEX, setPopupWidthIndex } = useVariableStore();
 
     const widthClassArr = [
+        "max-w-xl",
         "max-w-2xl",
         "max-w-3xl",
         "max-w-4xl",
@@ -37,38 +38,45 @@ export default function VideoPopup({ children, onClose }) {
             {/* 오버레이 배경 */}
             <div className="fixed inset-0 bg-black/50 transition-opacity" />
 
-            {/* 팝업 컨테이너 */}
-            <div className={`relative w-full ${widthClassArr[POPUP_WIDTH_INDEX]} mx-4`}>
-                {/* 창 사이즈조절 */}
-                <div className="flex flex-col h-full justify-center absolute -top-1 -left-16 z-15 ">
-                    <RippleButton
-                        className="text-white hover:bg-gray-600 p-2 transition-colors rounded-full font-thin"
-                        onClick={() => handlePopupSize(true)}
-                    >
-                        <PlusIcon className="size-12" />
-                    </RippleButton>
 
-                    <RippleButton
-                        className="text-white hover:bg-gray-600 p-2 transition-colors rounded-full font-thin"
-                        onClick={() => handlePopupSize(false)}
-                    >
-                        <MinusIcon className="size-12" />
-                    </RippleButton>
-                </div>
+            <div className={`w-full ${widthClassArr[POPUP_WIDTH_INDEX]}`}>
+                <div className="h-[98vh] w-full bg-white dark:bg-stone-800 rounded transform transition-all overflow-hidden">
+                    {/* 상단 툴바 */}
+                    <div className="flex flex-row bg-white border-b">
 
-                {/* 버튼 */}
-                <div className="absolute top-0 right-0 z-10">
-                    <button
-                        onClick={onClose}
-                        className="text-black hover:text-gray-200 p-2 transition-colors rounded bg-white"
-                    >
-                        <XIcon className="size-4" />
-                    </button>
-                </div>
+                        <RippleButton
+                            className="text-black hover:text-gray-200 p-2 transition-colors bg-white"
+                            onClick={() => handlePopupSize(false)}
+                        >
+                            <MinusIcon className="size-4" />
+                        </RippleButton>
 
-                {/* 팝업 내용 */}
-                <div className="h-[99vh] w-full bg-white dark:bg-stone-800 rounded transform transition-all overflow-hidden">
-                    <div className="p-2 h-full overflow-y-auto scrollbar-ultra-thin">{children}</div>
+                        <RippleButton
+                            className="text-black hover:text-gray-200 p-2 transition-colors bg-white"
+                            onClick={() => handlePopupSize(true)}
+                        >
+                            <PlusIcon className="size-4" />
+                        </RippleButton>
+
+
+
+
+                        <div className="flex-1" />
+
+                        {/* 닫기 버튼 */}
+                        <RippleButton
+                            onClick={onClose}
+                            className="text-black hover:text-gray-200 p-2 transition-colors bg-white"
+                        >
+                            <XIcon className="size-4" />
+                        </RippleButton>
+
+
+                    </div>
+
+
+                    {/* 팝업 내용 */}
+                    <div className="p-1 h-full overflow-y-auto scrollbar-ultra-thin bg-gray-50">{children}</div>
                 </div>
             </div>
         </div>

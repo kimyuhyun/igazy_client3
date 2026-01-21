@@ -9,7 +9,7 @@ const menu = [
     },
     {
         icon: "play",
-        title: "영상재생",
+        title: "영상",
         link: "/video",
     },
     {
@@ -19,7 +19,7 @@ const menu = [
     },
     // {
     //     icon: "",
-    //     title: "Xaxis 보정테이블",
+    //     title: "X축 캘리브레이션",
     //     link: "/x_axis_cali",
     // },
 

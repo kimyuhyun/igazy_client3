@@ -270,7 +270,7 @@ export default function Video() {
             const storage = await checkStorageQuota();
             const estimatedSize = JSON.stringify(zipData).length;
 
-            if (estimatedSize > storage.available) {
+            if (storage.available > 0 && estimatedSize > storage.available) {
                 toast.loading("저장 공간 확보 중...", { id: "download" });
                 const deleted = await cleanupOldFiles(5);
                 toast.success(`오래된 파일 ${deleted}개 삭제됨`, { id: "success" });

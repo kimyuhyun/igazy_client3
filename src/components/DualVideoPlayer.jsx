@@ -1,6 +1,5 @@
 // components/DualVideoPlayer.jsx
 import { useEffect, useState } from "react";
-import Popup from "./Popup";
 
 export default function DualVideoPlayer({ videoData }) {
     const [currentFrame, setCurrentFrame] = useState(0);

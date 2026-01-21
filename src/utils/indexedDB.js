@@ -49,12 +49,17 @@ export const checkStorageQuota = async () => {
     if (navigator.storage && navigator.storage.estimate) {
         const estimate = await navigator.storage.estimate();
         return {
-            usage: estimate.usage,
-            quota: estimate.quota,
-            available: estimate.quota - estimate.usage,
+            usage: estimate.usage || 0,
+            quota: estimate.quota || 0,
+            available: (estimate.quota || 0) - (estimate.usage || 0),
         };
     }
-    return null;
+    // null 대신 기본값 반환
+    return {
+        usage: 0,
+        quota: 0,
+        available: 0,
+    };
 };
 
 // 배열을 청크로 나누기

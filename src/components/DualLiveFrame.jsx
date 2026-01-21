@@ -208,8 +208,6 @@ const DualLiveFrame = () => {
                             src={distanceResultImage}
                             alt="Distance Measurement Result"
                             className="aspect-[16/9] w-full bg-black rounded"
-                            width={640}
-                            height={360}
                         />
                     )}
 

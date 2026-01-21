@@ -4,8 +4,8 @@ import { getTodayTime, getToday } from "../utils/Common";
 import LiveGraph from "../components/LiveGraph";
 import A4Page from "../components/A4Page";
 import { calcMM } from "../utils/CalcPxToMm";
-import calculator from "../utils/OldRegressionEyeAngleCalculator";
-// import calculator from "../utils/RegressionEyeAngleCalculator";
+// import calculator from "../utils/OldRegressionEyeAngleCalculator";
+import calculator from "../utils/RegressionEyeAngleCalculator";
 
 export default function PDReport() {
     const [searchParams] = useSearchParams();

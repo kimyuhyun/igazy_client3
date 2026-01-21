@@ -111,7 +111,8 @@ export default function Layout({ children }) {
             >
                 <div className="flex items-center justify-between py-3 h-[53px]">
                     <h2 className="ml-4 text-lg font-black italic text-white">
-                        <Link to={`/`}>IGazy client</Link>
+                        {/* <Link to={`/`}>IGazy client3</Link> */}
+                        IGazy client3
                     </h2>
                     <button
                         className="mr-2 flex items-center justify-center size-8 text-white hover:bg-white hover:text-black rounded"
@@ -133,20 +134,20 @@ export default function Layout({ children }) {
 
                             return (
                                 <div key={i}>
-                                    <a
-                                        href={item.link}
+                                    <Link
+                                        to={item.link}
                                         className={`
-                                    w-full flex items-center justify-between px-3 py-2 font-semibold rounded transition 
-                                    hover:bg-white hover:text-blue-800
-                                    ${isActive ? "bg-white text-blue-800" : "text-gray-200"}
-                                `}
+                                            w-full flex items-center justify-between px-3 py-2 font-semibold rounded transition 
+                                            hover:bg-white hover:text-blue-800
+                                            ${isActive ? "bg-white text-blue-800" : "text-gray-200"}
+                                        `}
                                     >
                                         <h1 className="flex items-center gap-4">
                                             <IconComponent className="size-4" />
                                             {item.title}
                                         </h1>
                                         <ChevronRight className="size-4" />
-                                    </a>
+                                    </Link>
                                 </div>
                             );
                         })}
@@ -154,9 +155,8 @@ export default function Layout({ children }) {
             </aside>
 
             <div
-                className={`flex-1 flex flex-col transition-all duration-300 overflow-x-hidden ${
-                    isDesktop && sidebarOpen ? "ml-64" : "ml-0"
-                }`}
+                className={`flex-1 flex flex-col transition-all duration-300 overflow-x-hidden ${isDesktop && sidebarOpen ? "ml-64" : "ml-0"
+                    }`}
             >
                 <header className="fixed top-0 left-0 right-0 z-10 flex items-center justify-between md:justify-between gap-4 px-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800 h-[53px]">
                     <div className="flex items-center">
