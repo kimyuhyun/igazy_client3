@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getTodayTime, getToday } from "../utils/common";
+import { getTodayTime, getToday } from "../utils/Common";
 import LiveGraph from "../components/LiveGraph";
 import A4Page from "../components/A4Page";
 import { calcMM } from "../utils/CalcPxToMm";
