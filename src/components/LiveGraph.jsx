@@ -9,10 +9,10 @@ import {
     Tooltip,
     Legend,
 } from "chart.js";
-import { verticalLinePlugin } from "../utils/verticalLinePlugin";
+import { verticalLinePlugin } from "../utils/VerticalLinePlugin";
 import { Line } from "react-chartjs-2";
 import { analyzeHidePatternsFromProcessedData } from "../utils/hideRegionAnalyzer";
-import { prepareVisualizationData, prepareVisualizationDataInt } from "../utils/chartDataProcessor";
+import { prepareVisualizationData, prepareVisualizationDataInt } from "../utils/ChartDataProcessor";
 import useVariableStore from "../stores/useVariableStore";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, verticalLinePlugin);
