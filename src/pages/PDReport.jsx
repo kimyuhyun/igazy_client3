@@ -1,26 +1,48 @@
 import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { getTodayTime, getToday } from "../utils/Common";
 import LiveGraph from "../components/LiveGraph";
 import A4Page from "../components/A4Page";
 import { calcMM } from "../utils/CalcPxToMm";
-// import calculator from "../utils/OldRegressionEyeAngleCalculator";
-import calculator from "../utils/RegressionEyeAngleCalculator";
+import calculator from "../utils/OldRegressionEyeAngleCalculator";
+// import calculator from "../utils/RegressionEyeAngleCalculator";
 
 export default function PDReport() {
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
 
-    const patient_num = searchParams.get("patient_num");
-    const patient_name = searchParams.get("patient_name");
+    const patientNum = searchParams.get("patient_num");
+    const patientName = searchParams.get("patient_name");
     const angle = searchParams.get("angle") || "";
-    const distance = searchParams.get("distance") || "";
-    const limbus_mm = searchParams.get("limbus_mm") || "";
-    const limbus_px = searchParams.get("limbus_px") || "";
+    // const distance = searchParams.get("distance") || "";
+    const limbusMM = searchParams.get("limbus_mm") || "";
+    const limbusPX = searchParams.get("limbus_px") || "";
 
     const [odResults, setOdResults] = useState([]);
     const [osResults, setOsResults] = useState([]);
 
     const [data, setData] = useState([]);
+
+    const [newDistance, setNewDistance] = useState("");
+
+    // limbus_mm 수정용 state
+    const [editLimbusMM, setEditLimbusMM] = useState(limbusMM);
+
+    // limbus_mm 값 변경 핸들러
+    const handleLimbusMMChange = () => {
+        if (!editLimbusMM || parseFloat(editLimbusMM) <= 0) {
+            alert("유효한 윤부 지름 값을 입력해주세요.");
+            return;
+        }
+
+        // URL 파라미터 업데이트
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set("limbus_mm", editLimbusMM);
+
+        // 페이지 새로고침
+        navigate(`?${newParams.toString()}`, { replace: true });
+        window.location.reload();
+    };
 
 
     useEffect(() => {
@@ -86,20 +108,37 @@ export default function PDReport() {
         })();
     }, []);
 
+    // limbusMM URL 파라미터가 변경되면 editLimbusMM 업데이트
+    useEffect(() => {
+        setEditLimbusMM(limbusMM);
+    }, [limbusMM]);
+
     const calculatePD = (points, axis, side) => {
         const difference = points[0] - points[1];
         console.log("difference", difference);
 
         let degrees = 0;
 
-        if (distance === "") {
-            const newDistance = calcMM(limbus_mm, limbus_px);
-            console.log("newDistance", newDistance);
+        /**
+         * distance 값은 쓰지 않는다. 
+         * limbusMM과 limbusPX를 사용하여 계산하여 사용한다.
+         */
 
-            degrees = calculator.calculateEyeAngle(parseFloat(angle), parseInt(newDistance), Math.abs(difference));
-        } else {
-            degrees = calculator.calculateEyeAngle(parseFloat(angle), parseInt(distance), Math.abs(difference));
-        }
+        const distance = calcMM(parseFloat(limbusMM), parseFloat(limbusPX));
+        console.log("distance", distance);
+
+        setNewDistance(distance);
+
+        // const newDistance = calcMM(parseFloat(limbusMM), parseFloat(limbusPX));
+        // console.log("newDistance", newDistance);
+
+        // if (distance === "") {
+        //     degrees = calculator.calculateEyeAngle(parseFloat(angle), parseInt(newDistance), Math.abs(difference));
+        // } else {
+        //     degrees = calculator.calculateEyeAngle(parseFloat(angle), parseInt(distance), Math.abs(difference));
+        // }
+
+        degrees = calculator.calculateEyeAngle(parseFloat(angle), parseInt(distance), Math.abs(difference));
 
         console.log(degrees);
 
@@ -127,7 +166,52 @@ export default function PDReport() {
     };
 
     return (
-        <div className="bg-gray-400 print:bg-white p-4 print:p-0">
+        <div className="bg-gray-400 print:bg-white p-4 print:p-0 relative">
+            {/* 왼쪽 상단 limbus_mm 수정 input */}
+            <div className="fixed top-4 left-4 z-50 print:hidden">
+                <div className="bg-white rounded-lg shadow-lg p-3 border-2 border-blue-500">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        윤부 지름 (mm)
+                    </label>
+                    <div className="flex gap-2 items-center">
+                        <input
+                            type="number"
+                            step="0.1"
+                            value={editLimbusMM}
+                            onChange={(e) => setEditLimbusMM(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    handleLimbusMMChange();
+                                }
+                            }}
+                            className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <div className="flex flex-col gap-1">
+                            <button
+                                onClick={() => setEditLimbusMM((prev) => (parseFloat(prev) + 0.1).toFixed(1))}
+                                className="px-2 py-0.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-semibold"
+                                title="+0.1"
+                            >
+                                +0.1
+                            </button>
+                            <button
+                                onClick={() => setEditLimbusMM((prev) => Math.max(0, parseFloat(prev) - 0.1).toFixed(1))}
+                                className="px-2 py-0.5 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors font-semibold"
+                                title="-0.1"
+                            >
+                                -0.1
+                            </button>
+                        </div>
+                        <button
+                            onClick={handleLimbusMMChange}
+                            className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors font-semibold"
+                        >
+                            적용
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div className="space-y-4 print:space-y-0">
                 <A4Page>
                     <div className="border-b-4 border-yellow-400 flex flex-row justify-between">
@@ -144,7 +228,7 @@ export default function PDReport() {
                     <table className="w-full border-collapse border-1 border-gray-400">
                         <tbody>
                             <tr>
-                                <td colSpan={2} className="text-xl font-bold border-1 border-gray-300 py-3 text-black">
+                                <td colSpan={4} className="text-xl font-bold border-1 border-gray-300 py-3 text-black">
                                     PATIENT INFORMATION
                                 </td>
                             </tr>
@@ -153,15 +237,41 @@ export default function PDReport() {
                                     Patient Number
                                 </th>
                                 <td className="text-sm border border-gray-300 py-3 px-4 text-gray-900 font-medium">
-                                    {patient_num || '-'}
+                                    {patientNum || '-'}
                                 </td>
-                            </tr>
-                            <tr>
                                 <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">
                                     Patient Name
                                 </th>
                                 <td className="text-sm border border-gray-300 py-3 px-4 text-gray-900 font-medium">
-                                    {patient_name || '-'}
+                                    {patientName || '-'}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">
+                                    Distance
+                                </th>
+                                <td className="text-sm border border-gray-300 py-3 px-4 text-gray-900 font-medium">
+                                    {`${newDistance ? `${parseFloat(newDistance).toFixed(1)}mm` : '-'}`}
+                                </td>
+                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">
+                                    Angle
+                                </th>
+                                <td className="text-sm border border-gray-300 py-3 px-4 text-gray-900 font-medium">
+                                    {`${angle}°` || '-'}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">
+                                    White to White
+                                </th>
+                                <td className="text-sm border border-gray-300 py-3 px-4 text-gray-900 font-medium">
+                                    {`${limbusMM}mm` || '-'}
+                                </td>
+                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">
+                                    White to White(px)
+                                </th>
+                                <td className="text-sm border border-gray-300 py-3 px-4 text-gray-900 font-medium">
+                                    {limbusPX ? `${parseFloat(limbusPX).toFixed(1)}px` : '-'}
                                 </td>
                             </tr>
                         </tbody>

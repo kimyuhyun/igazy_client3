@@ -34,5 +34,6 @@ const K = 410;
 export function calcMM(limbusRealMM, limbusPxDiameter) {
     // === 거리 계산 ===
     // 공식: 거리 = (K × 실제크기) / 픽셀크기
+    // return Math.round((K * limbusRealMM) / limbusPxDiameter);
     return (K * limbusRealMM) / limbusPxDiameter;
 }

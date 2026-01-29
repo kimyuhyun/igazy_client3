@@ -19,6 +19,11 @@ const menu = [
     },
     // {
     //     icon: "",
+    //     title: "윤부지름수동측정",
+    //     link: "/limbus_test",
+    // }
+    // {
+    //     icon: "",
     //     title: "X축 캘리브레이션",
     //     link: "/x_axis_cali",
     // },

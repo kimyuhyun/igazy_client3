@@ -231,8 +231,8 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
             },
         };
 
-        // const newData = prepareVisualizationData(rawData);
-        const newData = prepareVisualizationDataInt(rawData);
+        const newData = prepareVisualizationData(rawData);
+        // const newData = prepareVisualizationDataInt(rawData);
 
         newData[LEFT].isHide = osIsHideData;
         newData[RIGHT].isHide = odIsHideData;
@@ -319,6 +319,8 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
                 borderColor: "red",
                 backgroundColor: "rgba(255,0,0,0.1)",
                 borderWidth: 1,
+                tension: 0.4,
+                cubicInterpolationMode: 'monotone',
                 ...getPointConfig(processedData[RIGHT][X_AXIS], "x", "od", "red"),
             },
             {
@@ -327,6 +329,8 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
                 borderColor: "blue",
                 backgroundColor: "rgba(0,0,255,0.1)",
                 borderWidth: 1,
+                tension: 0.4,
+                cubicInterpolationMode: 'monotone',
                 ...getPointConfig(processedData[LEFT][X_AXIS], "x", "os", "blue"),
             },
         ],
@@ -341,6 +345,8 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
                 borderColor: "red",
                 backgroundColor: "rgba(255,0,0,0.1)",
                 borderWidth: 1,
+                tension: 0.4,
+                cubicInterpolationMode: 'monotone',
                 ...getPointConfig(processedData[RIGHT][Y_AXIS], "y", "od", "red"),
             },
             {
@@ -349,6 +355,8 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
                 borderColor: "blue",
                 backgroundColor: "rgba(0,0,255,0.1)",
                 borderWidth: 1,
+                tension: 0.4,
+                cubicInterpolationMode: 'monotone',
                 ...getPointConfig(processedData[LEFT][Y_AXIS], "y", "os", "blue"),
             },
         ],
@@ -451,13 +459,13 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
         localStorage.setItem("OSResultsData", JSON.stringify(osResults));
         localStorage.setItem("PDReportData", JSON.stringify(medianResult));
         window.open(
-            `/pd_report?patient_num=${PATIENT_NUM}&patient_name=${PATIENT_NAME}&distance=${DISTANCE}&angle=${ANGLE}&limbus_mm=${LIMBUS_MM}&limbus_px=${LIMBUS_PX}`,
+            `/igazy_client3/pd_report?patient_num=${PATIENT_NUM}&patient_name=${PATIENT_NAME}&distance=${DISTANCE}&angle=${ANGLE}&limbus_mm=${LIMBUS_MM}&limbus_px=${LIMBUS_PX}`,
             "_blank"
         );
     };
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-0">
             <div className="bg-white dark:bg-black p-0 text-xs">
                 <div className="relative flex flex-row justify-between items-center">
                     <div className="flex items-center">

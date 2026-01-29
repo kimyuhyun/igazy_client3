@@ -109,7 +109,7 @@ const DualDetectorFrame = forwardRef(({ onEnded, onOdResults, onOsResults }, ref
 
     return (
         <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
                 {/* OD (우안) */}
                 <div className="relative bg-gray-800 rounded shadow overflow-hidden">
                     <div className="absolute top-0 w-full px-2 py-1 flex justify-between items-center z-10">

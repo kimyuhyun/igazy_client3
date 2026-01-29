@@ -7,11 +7,11 @@ import useVariableStore from "../stores/useVariableStore";
 import RippleButton from "./RippleButton";
 import toast from "react-hot-toast";
 import axios from "axios";
-import { RulerIcon } from "lucide-react";
+import { RulerIcon, X } from "lucide-react";
 import EyeWsClient from "../utils/EyeWsClient";
 import { calcMM } from "../utils/CalcPxToMm";
 
-const DualLiveFrame = () => {
+const DualLiveFrame = ({ onClose }) => {
     const { IP, LIMBUS_MM, DISTANCE, ANGLE, setAngle, setDistance, setLimbusPX } =
         useVariableStore();
 
@@ -73,23 +73,16 @@ const DualLiveFrame = () => {
                     setDistanceResultImage(`data:image/jpeg;base64,${base64}`);
                 }
             } else {
-                setLimbusPX(data.pxDiameter);
-
-                // === 윤부 정보 ===
-                const limbusRealMM = LIMBUS_MM; // 13.81;
-                const limbusPxDiameter = data.pxDiameter; // 서버에서 받은 픽셀 지름
+                const limbusRealMM = LIMBUS_MM;
+                const limbusPxDiameter = data.pxDiameter;
                 const distanceMM = calcMM(limbusRealMM, limbusPxDiameter);
-                console.log('[DEBUG] Calculated distance:', distanceMM, 'mm');
+                console.log('[DEBUG] Auto measurement - limbus_px:', limbusPxDiameter, 'calculated distance:', distanceMM, 'mm');
+                setLimbusPX(limbusPxDiameter);
                 setDistance(Number(distanceMM.toFixed(0)));
                 setDistanceResultImage(`data:image/jpeg;base64,${data.frameBase64}`);
             }
         } catch (error) {
             console.error('[ERROR] API call failed:', error);
-            console.error('[ERROR] Error details:', {
-                message: error.message,
-                response: error.response?.data,
-                status: error.response?.status,
-            });
             toast.error(error.response?.data?.error || error.message || "API 호출 실패");
         }
     };
@@ -105,8 +98,6 @@ const DualLiveFrame = () => {
                 },
             });
 
-            console.log(data);
-
             if (data.error) {
                 console.error("에러:", data.error);
                 toast.error(data.error);
@@ -121,26 +112,23 @@ const DualLiveFrame = () => {
         }
     };
 
-    // 수동 측정 완료 핸들러 (메모이제이션)
     const handleManualMeasurement = useCallback((limbusPxDiameter) => {
         const limbusRealMM = LIMBUS_MM;
         const distanceMM = calcMM(limbusRealMM, limbusPxDiameter);
+        console.log('[DEBUG] Manual measurement - limbus_px:', limbusPxDiameter, 'calculated distance:', distanceMM, 'mm');
+        setLimbusPX(limbusPxDiameter);
         setDistance(Number(distanceMM.toFixed(0)));
-    }, [LIMBUS_MM, setDistance]);
+    }, [LIMBUS_MM, setDistance, setLimbusPX]);
 
-    // 컴포넌트 마운트 시 자동 시작
     useEffect(() => {
-        // SOCKET_URL이 변경되면 새로운 클라이언트 생성
         if (wsClientRef.current) {
             wsClientRef.current.disconnect();
         }
 
         const wsClient = new EyeWsClient(SOCKET_URL);
         wsClientRef.current = wsClient;
-
         wsClient.connect();
 
-        // LIVE frame (OD / OS)
         const offLive = wsClient.onLive(({ data }) => {
             const { frameBase64, eye } = data;
 
@@ -162,92 +150,125 @@ const DualLiveFrame = () => {
     }, [SOCKET_URL]);
 
     return (
-        <div>
-            <div className="relative">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <div className="relative bg-gray-800 rounded shadow overflow-hidden">
-                        <div className="absolute top-0 w-full px-2 py-1 flex justify-between items-center z-10">
-                            <h2 className="text-xl font-semibold text-white">OD</h2>
-                            <span className={`text-xs ${getStatusBadge(connectionStatus.OD).color}`}>
-                                {getStatusBadge(connectionStatus.OD).text}
-                            </span>
-                        </div>
-                        <canvas ref={odCanvasRef} className="aspect-[16/9] w-full bg-black" width={640} height={360} />
-                    </div>
-
-                    <div className="relative bg-gray-800 rounded shadow overflow-hidden">
-                        <div className="absolute top-0 w-full px-2 py-1 flex justify-between items-center z-10">
-                            <h2 className="text-xl font-semibold text-white">OS</h2>
-                            <span className={`text-xs ${getStatusBadge(connectionStatus.OS).color}`}>
-                                {getStatusBadge(connectionStatus.OS).text}
-                            </span>
-                        </div>
-                        <canvas ref={osCanvasRef} className="aspect-[16/9] w-full bg-black" width={640} height={360} />
-                    </div>
-                </div>
-
-                <div className="absolute top-2/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 mt-2 z-50">
-                    <RippleButton
-                        className="bg-green-600 hover:bg-green-400 text-white px-4 py-4"
-                        onClick={async () => {
-                            await getCamToEyeDistance();
-                            await getOneFramePupilDetect();
-                        }}
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-0 lg:p-4 backdrop-blur-sm">
+            <div className="relative w-full h-full bg-gray-100 rounded overflow-hidden flex flex-col">
+                {/* Header */}
+                <div className="flex items-center justify-end bg-white border-b border-gray-200">
+                    <button
+                        onClick={onClose}
+                        className="p-2 rounded-full transition-colors hover:bg-gray-100"
                     >
-                        <RulerIcon className="size-4" />
-                        눈과 카메라 거리 측정
-                    </RippleButton>
+                        <X className="size-5 text-black" />
+                    </button>
                 </div>
-            </div>
 
-            {/* 마우스 2포인트 클릭으로 수동 지정도 추가해보자  */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 max-h-[360px]">
-                <div className="rounded relative">
-                    {!showManualMode && distanceResultImage && (
-                        <img
-                            src={distanceResultImage}
-                            alt="Distance Measurement Result"
-                            className="aspect-[16/9] w-full bg-black rounded"
-                        />
-                    )}
+                {/* Content */}
+                <div className="flex-1 overflow-auto scrollbar-ultra-thin">
+                    <div className="w-full space-y-1 p-1">
+                        {/* Live Camera Feeds */}
+                        <div className="grid grid-cols-2 gap-1 max-w-5xl mx-auto">
+                            <div className="relative bg-gray-800 rounded overflow-hidden">
+                                <div className="absolute top-0 w-full px-2 py-1 flex justify-between items-center z-10">
+                                    <h2 className="text-lg font-semibold text-white">OD</h2>
+                                    <span className={`text-xs ${getStatusBadge(connectionStatus.OD).color}`}>
+                                        {getStatusBadge(connectionStatus.OD).text}
+                                    </span>
+                                </div>
+                                <canvas ref={odCanvasRef} className="aspect-[16/9] w-full bg-black" width={640} height={360} />
+                            </div>
 
-                    {showManualMode && distanceResultImage && (
-                        <ManualDistanceMeasurement
-                            imageSource={distanceResultImage}
-                            onMeasurementComplete={handleManualMeasurement}
-                        />
-                    )}
+                            <div className="relative bg-gray-800 rounded overflow-hidden">
+                                <div className="absolute top-0 w-full px-2 py-1 flex justify-between items-center z-10">
+                                    <h2 className="text-lg font-semibold text-white">OS</h2>
+                                    <span className={`text-xs ${getStatusBadge(connectionStatus.OS).color}`}>
+                                        {getStatusBadge(connectionStatus.OS).text}
+                                    </span>
+                                </div>
+                                <canvas ref={osCanvasRef} className="aspect-[16/9] w-full bg-black" width={640} height={360} />
+                            </div>
 
-                    {/* 수동/자동 모드 토글 스위치 */}
-                    {distanceResultImage && (
-                        <div className="absolute bottom-1 start-1">
-                            <ManualToggleSwitch
-                                checked={showManualMode}
-                                onChange={(e) => setShowManualMode(e.target.checked)}
-                            />
+
                         </div>
-                    )}
-                </div>
 
-                <div className="aspect-[16/9] w-full">
-                    <HorizontalRuler mm={DISTANCE} />
-                </div>
-            </div>
+                        {/* Measurement Button */}
+                        <div className="sticky top-0 z-10">
+                            <RippleButton
+                                className="w-full max-w-5xl mx-auto bg-green-500 hover:bg-green-600 text-white py-2 text-lg"
+                                onClick={async () => {
+                                    await getCamToEyeDistance();
+                                    await getOneFramePupilDetect();
+                                }}
+                            >
+                                <RulerIcon className="size-5 mr-2" />
+                                측정
+                            </RippleButton>
+                        </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 min-h-[360px]">
-                <div className="rounded">
-                    {angleResultImage && (
-                        <img
-                            src={angleResultImage}
-                            alt="Angle Measurement Result"
-                            className="aspect-[16/9] w-full bg-black rounded"
-                            width={640}
-                            height={360}
-                        />
-                    )}
-                </div>
-                <div className="aspect-[16/9] w-full">
-                    <CameraAngleVisualizer angle={ANGLE} />
+                        <div className="h-16" />
+
+                        {/* Distance Measurement Section */}
+                        {distanceResultImage && (
+                            <div className="max-w-5xl mx-auto">
+                                <div className="bg-white rounded p-4">
+                                    <div className="flex justify-center mb-2">
+                                        <div className="relative rounded" style={{ width: '640px', height: '360px' }}>
+                                            {!showManualMode ? (
+                                                <img
+                                                    src={distanceResultImage}
+                                                    alt="Distance Measurement"
+                                                    className="w-full h-full object-contain rounded"
+                                                />
+                                            ) : (
+                                                <ManualDistanceMeasurement
+                                                    imageSource={distanceResultImage}
+                                                    onMeasurementComplete={handleManualMeasurement}
+                                                />
+                                            )}
+
+                                            {/* Toggle Switch */}
+                                            <div className="absolute bottom-2 left-2 z-10">
+                                                <ManualToggleSwitch
+                                                    checked={showManualMode}
+                                                    onChange={(e) => setShowManualMode(e.target.checked)}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Ruler */}
+                                    <div className="flex justify-center">
+                                        <div style={{ width: '640px' }}>
+                                            <HorizontalRuler mm={DISTANCE} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Angle Measurement Section */}
+                        {angleResultImage && (
+                            <div className="max-w-5xl mx-auto pt-16">
+                                <div className="bg-white rounded p-4">
+                                    <div className="flex justify-center mb-2">
+                                        <div className="bg-black rounded" style={{ width: '640px', height: '360px' }}>
+                                            <img
+                                                src={angleResultImage}
+                                                alt="Angle Measurement"
+                                                className="w-full h-full object-contain rounded"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Angle Visualizer */}
+                                    <div className="flex justify-center">
+                                        <div style={{ width: '640px' }}>
+                                            <CameraAngleVisualizer angle={ANGLE} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

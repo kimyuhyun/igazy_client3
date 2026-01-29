@@ -7,7 +7,6 @@ export default function VideoPopup({ children, onClose }) {
     const { POPUP_WIDTH_INDEX, setPopupWidthIndex } = useVariableStore();
 
     const widthClassArr = [
-        "max-w-xl",
         "max-w-2xl",
         "max-w-3xl",
         "max-w-4xl",
@@ -76,7 +75,7 @@ export default function VideoPopup({ children, onClose }) {
 
 
                     {/* 팝업 내용 */}
-                    <div className="p-1 h-full overflow-y-auto scrollbar-ultra-thin bg-gray-50">{children}</div>
+                    <div className="p-1 h-full overflow-y-auto scrollbar-ultra-thin bg-white">{children}</div>
                 </div>
             </div>
         </div>

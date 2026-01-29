@@ -7,10 +7,10 @@ const Y_AXIS = 1;
 /**
  * 이동 평균 계산 함수
  * @param {number[]} data - 입력 데이터 배열
- * @param {number} window - 이동 평균 윈도우 크기 (기본값: 5)
+ * @param {number} window - 이동 평균 윈도우 크기 (기본값: 15)
  * @returns {number[]} 이동 평균이 적용된 데이터
  */
-const movingAverage = (data, window = 5) => {
+const movingAverage = (data, window = 25) => {
     if (data.length < window) return [...data];
 
     const result = [];

@@ -159,6 +159,11 @@ const ManualDistanceMeasurement = React.memo(({ imageSource, onMeasurementComple
             Math.pow(points[1].x - points[0].x, 2) + Math.pow(points[1].y - points[0].y, 2)
         );
 
+        console.log('[ManualMeasurement] 측정 완료:');
+        console.log('  - Point 1:', points[0]);
+        console.log('  - Point 2:', points[1]);
+        console.log('  - Measured diameter:', limbusPxDiameter.toFixed(2), 'px');
+
         if (onMeasurementComplete) {
             onMeasurementComplete(limbusPxDiameter);
         }
@@ -172,15 +177,14 @@ const ManualDistanceMeasurement = React.memo(({ imageSource, onMeasurementComple
                 ref={canvasRef}
                 width={640}
                 height={360}
-                className={`aspect-[16/9] w-full bg-black rounded ${points.length < 2 ? "cursor-none" : "cursor-default"
-                    }`}
+                className={`bg-black rounded ${points.length < 2 ? "cursor-none" : "cursor-default"}`}
                 onClick={handleCanvasClick}
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
             />
 
             {/* 안내 메시지 */}
-            <div className="absolute top-2 left-2 flex flex-row">
+            <div className="absolute top-2 right-2 flex flex-row">
                 <div className="bg-black/70 text-white rounded text-sm px-3 py-2">
                     {points.length === 0 && "1️⃣ 윤부의 한쪽 끝을 클릭하세요"}
                     {points.length === 1 && "2️⃣ 윤부의 반대쪽 끝을 클릭하세요"}

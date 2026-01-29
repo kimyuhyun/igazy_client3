@@ -245,7 +245,7 @@ export default function Measure() {
             console.log(data);
             toast.success("연결확인");
         } catch (error) {
-            toast.error("타임아웃 3초, 핫스팟 연결을 확인해 주세요.");
+            toast.error("타임아웃 3초, 연결을 확인해 주세요.");
         } finally {
             setLoading(false);
         }
@@ -392,9 +392,7 @@ export default function Measure() {
             </div>
 
             {mode === "view" && (
-                <VideoPopup onClose={handleCloseViewMode}>
-                    <DualLiveFrame key={`view-${componentKey}`} />
-                </VideoPopup>
+                <DualLiveFrame key={`view-${componentKey}`} onClose={handleCloseViewMode} />
             )}
 
             {mode === "pupil" && (
