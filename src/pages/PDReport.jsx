@@ -76,10 +76,16 @@ export default function PDReport() {
                 const yaxis_od_3rd = [jsonData[4].odYMedian, jsonData[5].odYMedian];
                 const yaxis_os_3rd = [jsonData[4].osYMedian, jsonData[5].osYMedian];
 
-                const xaxis_od_4th = [jsonData[6].odXMedian, jsonData[7].odXMedian];
-                const xaxis_os_4th = [jsonData[6].osXMedian, jsonData[7].osXMedian];
-                const yaxis_od_4th = [jsonData[6].odYMedian, jsonData[7].odYMedian];
-                const yaxis_os_4th = [jsonData[6].osYMedian, jsonData[7].osYMedian];
+                let xaxis_od_4th = [];
+                let xaxis_os_4th = [];
+                let yaxis_od_4th = [];
+                let yaxis_os_4th = [];
+                if (jsonData.length === 8) {
+                    xaxis_od_4th = [jsonData[6].odXMedian, jsonData[7].odXMedian];
+                    xaxis_os_4th = [jsonData[6].osXMedian, jsonData[7].osXMedian];
+                    yaxis_od_4th = [jsonData[6].odYMedian, jsonData[7].odYMedian];
+                    yaxis_os_4th = [jsonData[6].osYMedian, jsonData[7].osYMedian];
+                }
 
                 const obj = {
                     xaxis_od_1st: calculatePD(xaxis_od_1st, "x", "OD"),
@@ -142,6 +148,10 @@ export default function PDReport() {
 
         console.log(degrees);
 
+        if (Number.isNaN(degrees)) {
+            return "";
+        }
+
         // PD 계산
         const radians = degrees * (Math.PI / 180);
         const pdValue = Math.tan(radians) * 100;
@@ -151,14 +161,14 @@ export default function PDReport() {
         if (axis === "x") {
             // X축: ESO(내사시) / EXO(외사시)
             if (side === "OD") {
-                direction = difference > 0 ? "EXO" : "ESO";
+                direction = difference > 0 ? "ESO" : "EXO";
             } else {
                 // OS
-                direction = difference > 0 ? "EXO" : "ESO";
+                direction = difference > 0 ? "ESO" : "EXO";
             }
         } else {
             // Y축: HYPER(상사위) / HYPO(하사위)
-            direction = difference > 0 ? "HYPER" : "HYPO";
+            direction = difference > 0 ? "HYPO" : "HYPER";
         }
 
         // return `${degrees.toFixed(2)}° / ${pdValue.toFixed(2)} ${direction}`;

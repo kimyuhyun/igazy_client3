@@ -3,6 +3,7 @@ import HorizontalRuler from "../components/HorizontalRuler";
 import ManualDistanceMeasurement from "./ManualDistanceMeasurement";
 import ManualToggleSwitch from "../components/ManualToggleSwitch";
 import CameraAngleVisualizer from "../components/CameraAngleVisualizer";
+import CenterCrosshair from "../components/CenterCrosshair";
 import useVariableStore from "../stores/useVariableStore";
 import RippleButton from "./RippleButton";
 import toast from "react-hot-toast";
@@ -23,10 +24,12 @@ const DualLiveFrame = ({ onClose }) => {
 
     const odCanvasRef = useRef(null);
     const osCanvasRef = useRef(null);
+    const crosshairRef = useRef(null);
 
-    const [showManualMode, setShowManualMode] = useState(false);
+    const [showManualMode, setShowManualMode] = useState(true);
     const [distanceResultImage, setDistanceResultImage] = useState(null);
     const [angleResultImage, setAngleResultImage] = useState(null);
+    const [buttonTopPosition, setButtonTopPosition] = useState(180);
 
     const getStatusBadge = (status) => {
         const statusConfig = {
@@ -149,8 +152,29 @@ const DualLiveFrame = ({ onClose }) => {
         };
     }, [SOCKET_URL]);
 
+    // CenterCrosshair의 높이를 측정하여 버튼 위치 계산
+    useEffect(() => {
+        const updateButtonPosition = () => {
+            if (crosshairRef.current) {
+                const rect = crosshairRef.current.getBoundingClientRect();
+                const centerY = rect.height / 2 - 2
+                setButtonTopPosition(centerY);
+            }
+        };
+
+        // 초기 위치 설정
+        updateButtonPosition();
+
+        // 윈도우 리사이즈 시 재계산
+        window.addEventListener('resize', updateButtonPosition);
+
+        return () => {
+            window.removeEventListener('resize', updateButtonPosition);
+        };
+    }, []);
+
     return (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-0 lg:p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm">
             <div className="relative w-full h-full bg-gray-100 rounded overflow-hidden flex flex-col">
                 {/* Header */}
                 <div className="flex items-center justify-end bg-white border-b border-gray-200">
@@ -158,117 +182,116 @@ const DualLiveFrame = ({ onClose }) => {
                         onClick={onClose}
                         className="p-2 rounded-full transition-colors hover:bg-gray-100"
                     >
-                        <X className="size-5 text-black" />
+                        <X className="size-6 text-black" />
                     </button>
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 overflow-auto scrollbar-ultra-thin">
-                    <div className="w-full space-y-1 p-1">
-                        {/* Live Camera Feeds */}
-                        <div className="grid grid-cols-2 gap-1 max-w-5xl mx-auto">
-                            <div className="relative bg-gray-800 rounded overflow-hidden">
-                                <div className="absolute top-0 w-full px-2 py-1 flex justify-between items-center z-10">
-                                    <h2 className="text-lg font-semibold text-white">OD</h2>
-                                    <span className={`text-xs ${getStatusBadge(connectionStatus.OD).color}`}>
-                                        {getStatusBadge(connectionStatus.OD).text}
-                                    </span>
-                                </div>
-                                <canvas ref={odCanvasRef} className="aspect-[16/9] w-full bg-black" width={640} height={360} />
+
+                    {/* Live Camera Feeds */}
+                    <div className="grid grid-cols-2 gap-1 max-w-5xl mx-auto">
+                        <div className="relative bg-gray-800 overflow-hidden">
+                            <div className="absolute top-0 w-full px-2 py-1 flex justify-between items-center z-10">
+                                <h2 className="text-lg font-semibold text-white">OD</h2>
+                                <span className={`text-xs ${getStatusBadge(connectionStatus.OD).color}`}>
+                                    {getStatusBadge(connectionStatus.OD).text}
+                                </span>
                             </div>
-
-                            <div className="relative bg-gray-800 rounded overflow-hidden">
-                                <div className="absolute top-0 w-full px-2 py-1 flex justify-between items-center z-10">
-                                    <h2 className="text-lg font-semibold text-white">OS</h2>
-                                    <span className={`text-xs ${getStatusBadge(connectionStatus.OS).color}`}>
-                                        {getStatusBadge(connectionStatus.OS).text}
-                                    </span>
-                                </div>
-                                <canvas ref={osCanvasRef} className="aspect-[16/9] w-full bg-black" width={640} height={360} />
-                            </div>
-
-
+                            <canvas ref={odCanvasRef} className="aspect-[16/9] w-full bg-black" width={640} height={360} />
+                            <CenterCrosshair ref={crosshairRef} />
                         </div>
 
-                        {/* Measurement Button */}
-                        <div className="sticky top-0 z-10">
-                            <RippleButton
-                                className="w-full max-w-5xl mx-auto bg-green-500 hover:bg-green-600 text-white py-2 text-lg"
-                                onClick={async () => {
-                                    await getCamToEyeDistance();
-                                    await getOneFramePupilDetect();
-                                }}
-                            >
-                                <RulerIcon className="size-5 mr-2" />
-                                측정
-                            </RippleButton>
+                        <div className="relative bg-gray-800 overflow-hidden">
+                            <div className="absolute top-0 w-full px-2 py-1 flex justify-between items-center z-10">
+                                <h2 className="text-lg font-semibold text-white">OS</h2>
+                                <span className={`text-xs ${getStatusBadge(connectionStatus.OS).color}`}>
+                                    {getStatusBadge(connectionStatus.OS).text}
+                                </span>
+                            </div>
+                            <canvas ref={osCanvasRef} className="aspect-[16/9] w-full bg-black" width={640} height={360} />
+                            <CenterCrosshair />
                         </div>
 
-                        <div className="h-16" />
 
-                        {/* Distance Measurement Section */}
-                        {distanceResultImage && (
-                            <div className="max-w-5xl mx-auto">
-                                <div className="bg-white rounded p-4">
-                                    <div className="flex justify-center mb-2">
-                                        <div className="relative rounded" style={{ width: '640px', height: '360px' }}>
-                                            {!showManualMode ? (
-                                                <img
-                                                    src={distanceResultImage}
-                                                    alt="Distance Measurement"
-                                                    className="w-full h-full object-contain rounded"
-                                                />
-                                            ) : (
-                                                <ManualDistanceMeasurement
-                                                    imageSource={distanceResultImage}
-                                                    onMeasurementComplete={handleManualMeasurement}
-                                                />
-                                            )}
+                    </div>
 
-                                            {/* Toggle Switch */}
-                                            <div className="absolute bottom-2 left-2 z-10">
-                                                <ManualToggleSwitch
-                                                    checked={showManualMode}
-                                                    onChange={(e) => setShowManualMode(e.target.checked)}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
+                    {/* Measurement Button */}
+                    <div
+                        className="absolute left-1/2 z-10 -translate-x-1/2 translate-y-1/2"
+                        style={{ top: `${buttonTopPosition}px` }}
+                    >
+                        <RippleButton
+                            className="px-4 bg-green-500 hover:bg-green-600 text-white py-2 text-lg"
+                            onClick={async () => {
+                                await getCamToEyeDistance();
+                                await getOneFramePupilDetect();
+                            }}
+                        >
+                            <RulerIcon className="size-5 mr-2" />
+                            측정
+                        </RippleButton>
+                    </div>
 
-                                    {/* Ruler */}
-                                    <div className="flex justify-center">
-                                        <div style={{ width: '640px' }}>
-                                            <HorizontalRuler mm={DISTANCE} />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
 
-                        {/* Angle Measurement Section */}
-                        {angleResultImage && (
-                            <div className="max-w-5xl mx-auto pt-16">
-                                <div className="bg-white rounded p-4">
-                                    <div className="flex justify-center mb-2">
-                                        <div className="bg-black rounded" style={{ width: '640px', height: '360px' }}>
+                    {/* Distance Measurement Section */}
+                    {distanceResultImage && (
+                        <div className="flex flex-wrap justify-center mt-1 gap-1">
+
+
+                            <div className="flex flex-row justify-center col-span-2">
+
+                                <div className="flex flex-col">
+                                    <div className="relative" style={{ width: '640px', height: '360px' }}>
+                                        {!showManualMode ? (
                                             <img
-                                                src={angleResultImage}
-                                                alt="Angle Measurement"
-                                                className="w-full h-full object-contain rounded"
+                                                src={distanceResultImage}
+                                                alt="Distance Measurement"
+                                                className="w-full h-full object-contain"
+                                            />
+                                        ) : (
+                                            <ManualDistanceMeasurement
+                                                imageSource={distanceResultImage}
+                                                onMeasurementComplete={handleManualMeasurement}
+                                            />
+                                        )}
+
+                                        {/* Toggle Switch */}
+                                        <div className="absolute bottom-2 left-2 z-10">
+                                            <ManualToggleSwitch
+                                                checked={showManualMode}
+                                                onChange={(e) => setShowManualMode(e.target.checked)}
                                             />
                                         </div>
                                     </div>
 
-                                    {/* Angle Visualizer */}
-                                    <div className="flex justify-center">
-                                        <div style={{ width: '640px' }}>
-                                            <CameraAngleVisualizer angle={ANGLE} />
-                                        </div>
+                                    {/* Ruler */}
+                                    <div style={{ width: '640px' }}>
+                                        <HorizontalRuler mm={DISTANCE} />
                                     </div>
                                 </div>
                             </div>
-                        )}
-                    </div>
+
+
+                            {/* Angle Measurement Section */}
+                            <div className="flex flex-row justify-center">
+                                {angleResultImage && (
+                                    <div className="flex flex-col">
+                                        <img
+                                            src={angleResultImage}
+                                            alt="Angle Measurement"
+                                            className="w-full h-full object-contain"
+                                        />
+
+
+                                        <CameraAngleVisualizer angle={ANGLE} />
+
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                 </div>
             </div>
         </div>

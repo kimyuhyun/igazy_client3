@@ -16,6 +16,22 @@ export default function MySlider({ max_frame, currentFrameRef, onCurrent }) {
         }
     }, [currentFrameRef, value]);
 
+    // 키보드 좌/우 방향키로 프레임 이동
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                handleChange(value - 1);
+            } else if (e.key === "ArrowRight") {
+                e.preventDefault();
+                handleChange(value + 1);
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [value, max_frame]);
+
     function handleChange(newValue) {
         const frame = Math.max(0, Math.min(newValue, max_frame - 1)); // 범위 제한
         setValue(frame);
@@ -36,7 +52,7 @@ export default function MySlider({ max_frame, currentFrameRef, onCurrent }) {
                     step="1"
                     value={value}
                     onChange={(e) => handleChange(Number(e.target.value))}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 outline-none"
                 />
             </div>
         </div>

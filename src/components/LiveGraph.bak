@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -9,14 +9,11 @@ import {
     Tooltip,
     Legend,
 } from "chart.js";
-import { LEFT, RIGHT, X_AXIS, Y_AXIS } from "../utils/Constants";
 import { verticalLinePlugin } from "../utils/VerticalLinePlugin";
 import { Line } from "react-chartjs-2";
 import { analyzeHidePatternsFromProcessedData } from "../utils/hideRegionAnalyzer";
-import { prepareVisualizationData, removeFirstTrueRegion, removeLastTrueRegion } from "../utils/ChartDataProcessor";
+import { prepareVisualizationData } from "../utils/ChartDataProcessor";
 // import { prepareVisualizationData } from "../utils/NewChartDataProcessor";
-import { createChartClickHandler, createChartHoverHandler } from "../utils/ChartEventHandlers";
-import { createChartOptionsX, createChartOptionsY } from "../utils/ChartOptions";
 import useVariableStore from "../stores/useVariableStore";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, verticalLinePlugin);
@@ -123,11 +120,17 @@ const dataLabelPlugin = {
     },
 };
 
+// 상수 정의
+const LEFT = 0;
+const RIGHT = 1;
+const X_AXIS = 0;
+const Y_AXIS = 1;
 
 const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, currentFrameRef }) => {
     const { MAX_FRAME, DISTANCE, ANGLE, PATIENT_NUM, PATIENT_NAME, LIMBUS_MM, LIMBUS_PX } = useVariableStore();
 
     const actualMaxFrame = maxFrame || MAX_FRAME;
+    const isDarkMode = document.documentElement.classList.contains("dark");
     const [renderedFrame, setRenderedFrame] = useState(0);
 
     // 중간값의 프레임 인덱스(포인트를 찍기위해서)
@@ -145,12 +148,6 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
     // 각 구간의 중간값
     const [medianResult, setMedianResult] = useState({});
 
-    // 매뉴얼 포인트 (Source, Destination)
-    const [manualPoints, setManualPoints] = useState({ source: null, dest: null });
-
-    // 차트에서 클릭한 포인트를 저장할 state
-    const [selectedPoints, setSelectedPoints] = useState([]);
-
     // 플러그인 등록
     useEffect(() => {
         if (!ChartJS.registry.plugins.get("backgroundColorPlugin")) {
@@ -160,7 +157,6 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
             ChartJS.register(dataLabelPlugin);
         }
     }, []);
-
 
     // 배열 데이터를 직접 처리 (useMemo로 성능 최적화)
     const odXData = useMemo(() => {
@@ -204,7 +200,7 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
     }, [osResults]);
 
     const osIsHideData = useMemo(() => {
-        if (!osResults || osResults.length === 0) return [];
+        if (!osResults || osResults.length === 0) return false;
         return osResults.map((result) => {
             if (result && result.is_hide === true) {
                 return true;
@@ -214,7 +210,7 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
     }, [osResults]);
 
     const odIsHideData = useMemo(() => {
-        if (!odResults || odResults.length === 0) return [];
+        if (!odResults || odResults.length === 0) return false;
         return odResults.map((result) => {
             if (result && result.is_hide === true) {
                 return true;
@@ -239,56 +235,11 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
         const newData = prepareVisualizationData(rawData);
         // const newData = prepareVisualizationDataInt(rawData);
 
-        // odIsHideData의 첫 번째 true 구간을 false로 변경
-        const modifiedOdIsHideData = removeFirstTrueRegion(odIsHideData);
-
-        // osIsHideData의 마지막 true 구간을 false로 변경
-        const modifiedOsIsHideData = removeLastTrueRegion(osIsHideData);
-
-        /**
-         * odIsHideData = false 의 의미는
-         * od 쪽 셔터글래스가 전기 신호가 들어가지 않았다는 뜻.
-         * 고로 셔텨글래스가 od 쪽이 열려있다는 뜻.
-         * 단순하게 반대로 생각하면된다.
-         * 이걸 다시 바로 잡을려면 일이 커져서 이렇게 생각하는게 쉽다.
-         * true: 전기 신호가 들어갔다. 고로 닫혔다.
-         * false: 전기 신호가 들어가지 않았다. 고로 열렸다.
-         */
-
-        newData[LEFT].isHide = modifiedOsIsHideData;
-        newData[RIGHT].isHide = modifiedOdIsHideData;
-
+        newData[LEFT].isHide = osIsHideData;
+        newData[RIGHT].isHide = odIsHideData;
 
         return newData;
     }, [odXData, osXData, odYData, osYData, osIsHideData, odIsHideData]);
-
-    // 현재 프레임 데이터를 캡처하는 함수
-    const capturePoint = (type) => {
-        const currentData = {
-            frame: renderedFrame,
-            od: {
-                x: processedData[RIGHT][X_AXIS][renderedFrame],
-                y: processedData[RIGHT][Y_AXIS][renderedFrame],
-            },
-            os: {
-                x: processedData[LEFT][X_AXIS][renderedFrame],
-                y: processedData[LEFT][Y_AXIS][renderedFrame],
-            }
-        };
-        setManualPoints(prev => ({ ...prev, [type]: currentData }));
-        console.log(`${type} point captured:`, currentData);
-    };
-
-    // 차트 이벤트 핸들러 생성 (클릭 시 로그만 출력, 저장 안 함)
-    // const handleChartClick = useMemo(
-    //     () => createChartClickHandler(renderedFrame, processedData),
-    //     [renderedFrame, processedData]
-    // );
-
-    const handleChartHover = useMemo(
-        () => createChartHoverHandler(renderedFrame),
-        [renderedFrame]
-    );
 
     // processedData가 준비된 후 분석 실행
     useEffect(() => {
@@ -413,63 +364,101 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
     };
 
     const chartOptionsX = useMemo(
-        () => createChartOptionsX({
-            renderedFrame,
-            actualMaxFrame,
-            processedData,
-            // handleChartClick, // 클릭 리스너 제거
-            handleChartHover,
+        () => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 1 },
+            plugins: {
+                legend: { display: false },
+                title: { display: false },
+                verticalLine: {
+                    frame: renderedFrame,
+                },
+                backgroundColorPlugin: {
+                    processedData: processedData,
+                },
+            },
+            scales: {
+                x: {
+                    type: "linear",
+                    min: 0,
+                    max: parseInt(actualMaxFrame),
+                    ticks: {
+                        stepSize: 30,
+                        display: false, // x축 숫자 숨기기
+                    },
+                    grid: {
+                        color: isDarkMode ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)",
+                        display: false, // x축 그리드 제거
+                    },
+                },
+                y: {
+                    min: -90,
+                    max: 90,
+                    ticks: { stepSize: 10 },
+                    grid: {
+                        color: isDarkMode ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)",
+                    },
+                },
+            },
         }),
-        [renderedFrame, actualMaxFrame, processedData, handleChartHover]
+        [renderedFrame, isDarkMode, actualMaxFrame, processedData, highlightIndices]
     );
 
     const chartOptionsY = useMemo(
-        () => createChartOptionsY({
-            renderedFrame,
-            actualMaxFrame,
-            processedData,
-            // handleChartClick, // 클릭 리스너 제거
-            handleChartHover,
+        () => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 1,
+            },
+            plugins: {
+                legend: {
+                    display: false,
+                    position: "top",
+                },
+                title: {
+                    text: "Y-Axis",
+                    display: false,
+                },
+                verticalLine: {
+                    frame: renderedFrame,
+                },
+                backgroundColorPlugin: {
+                    processedData: processedData,
+                },
+            },
+            scales: {
+                x: {
+                    type: "linear",
+                    min: 0,
+                    max: parseInt(actualMaxFrame),
+                    grid: {
+                        color: isDarkMode ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)",
+                        display: false, // x축 그리드 제거
+                    },
+                    ticks: {
+                        stepSize: 30,
+                        display: false, // x축 숫자 숨기기
+                    },
+                },
+                y: {
+                    min: -90,
+                    max: 90,
+                    ticks: { stepSize: 10 },
+                    grid: {
+                        color: isDarkMode ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)",
+                    },
+                },
+            },
         }),
-        [renderedFrame, actualMaxFrame, processedData, handleChartHover]
+        [renderedFrame, isDarkMode, actualMaxFrame, processedData, highlightIndices]
     );
 
     const showPDRport = async () => {
-        // medianResult가 배열인지 확인하고 복사
-        const currentData = Array.isArray(medianResult) ? [...medianResult] : [];
-
-        // Helper to create point data object
-        const createPointObject = (point, regionType, regionNumber) => ({
-            odXMedian: point.od.x,
-            odYMedian: point.od.y,
-            osXMedian: point.os.x,
-            osYMedian: point.os.y,
-            odXMedianIdx: point.frame,
-            odYMedianIdx: point.frame,
-            osXMedianIdx: point.frame,
-            osYMedianIdx: point.frame,
-            regionType: regionType,
-            regionNumber: regionNumber,
-            frameCount: 1,
-            frameRange: [point.frame, point.frame],
-            indexRange: [point.frame, point.frame]
-        });
-
-        // Source (6번)
-        if (manualPoints.source) {
-            currentData[6] = createPointObject(manualPoints.source, "OD hide, OS show", 6);
-        }
-
-        // Destination (7번)
-        if (manualPoints.dest) {
-            currentData[7] = createPointObject(manualPoints.dest, "OD show, OS hide", 7);
-        }
-
-        console.log("Final Report Data:", currentData);
-
         localStorage.setItem("ODResultsData", JSON.stringify(odResults));
         localStorage.setItem("OSResultsData", JSON.stringify(osResults));
-        localStorage.setItem("PDReportData", JSON.stringify(currentData));
+        localStorage.setItem("PDReportData", JSON.stringify(medianResult));
         window.open(
             `/igazy_client3/pd_report?patient_num=${PATIENT_NUM}&patient_name=${PATIENT_NAME}&distance=${DISTANCE}&angle=${ANGLE}&limbus_mm=${LIMBUS_MM}&limbus_px=${LIMBUS_PX}`,
             "_blank"
@@ -488,37 +477,15 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
                     </div>
                     <div className="absolute left-1/2 -translate-x-1/2 font-semibold">X-Axis(px)</div>
 
-                    <div className="flex items-center gap-2">
-                        {/* Source 버튼 */}
+                    {medianResult.length >= 6 && currentFrameRef != null && (
                         <button
                             type="button"
-                            className={`px-2 py-1 rounded text-xs ${manualPoints.source ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
-                            onClick={() => capturePoint('source')}
+                            className="bg-green-400 hover:bg-green-600 text-white rounded px-2 py-1"
+                            onClick={() => showPDRport()}
                         >
-                            {manualPoints.source ? `Source (F:${manualPoints.source.frame})` : 'Source'}
+                            결과보기
                         </button>
-
-                        {/* Destination 버튼 */}
-                        <button
-                            type="button"
-                            className={`px-2 py-1 rounded text-xs ${manualPoints.dest ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
-                            onClick={() => capturePoint('dest')}
-                        >
-                            {manualPoints.dest ? `Dest (F:${manualPoints.dest.frame})` : 'Dest'}
-                        </button>
-
-                        {medianResult.length >= 6 && currentFrameRef != null && (
-                            <button
-                                type="button"
-                                className="bg-green-400 hover:bg-green-600 text-white rounded px-2 py-1"
-                                onClick={() => showPDRport()}
-                            >
-                                결과보기
-                            </button>
-                        )}
-                    </div>
+                    )}
                 </div>
                 <div className="h-[260px] pr-1">
                     <Line data={chartDataX} options={chartOptionsX} />

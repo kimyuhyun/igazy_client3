@@ -29,9 +29,9 @@ export function findHideRegionsFromProcessedData(processedData) {
         // 현재 상태 확인
         let currentState = null;
         if (odHide && !osHide) {
-            currentState = "od_hide_os_show";
-        } else if (!odHide && osHide) {
             currentState = "os_hide_od_show";
+        } else if (!odHide && osHide) {
+            currentState = "od_hide_os_show";
         } else if (!odHide && !osHide) {
             currentState = "both_show";
         } else {

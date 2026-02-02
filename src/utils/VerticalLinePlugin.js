@@ -22,3 +22,4 @@ export const verticalLinePlugin = {
         ctx.restore();
     },
 };
+

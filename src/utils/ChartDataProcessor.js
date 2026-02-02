@@ -137,80 +137,79 @@ const linearInterpolate = (targetIndex, validIndices, validValues) => {
 };
 
 /**
- * 차트 생성을 위한 데이터 전처리 (정수 변환 버전)
- * @param {Object} inputData - 원시 안구 추적 데이터 {left: {x: [], y: []}, right: {x: [], y: []}}
- * @returns {Object} 전처리된 데이터 (NaN 보간 + 이동 평균 + 소수점 버림)
+ * 배열에서 첫 번째 true 구간을 false로 변경
+ * @param {boolean[]} data - boolean 배열
+ * @returns {boolean[]} 첫 번째 true 구간이 false로 변경된 새 배열
  */
-export const prepareVisualizationDataInt = (inputData) => {
-    // 1. 입력 데이터 구조 확인 및 복사
-    const tanData = {
-        [LEFT]: {
-            [X_AXIS]: [...(inputData.left?.x || [])],
-            [Y_AXIS]: [...(inputData.left?.y || [])],
-        },
-        [RIGHT]: {
-            [X_AXIS]: [...(inputData.right?.x || [])],
-            [Y_AXIS]: [...(inputData.right?.y || [])],
-        },
-    };
+export const removeFirstTrueRegion = (data) => {
+    const modifiedData = [...data];
+    let firstTrueStart = -1;
+    let firstTrueEnd = -1;
 
-    // 2. NaN 값 처리 (선형 보간)
-    for (const eye of [LEFT, RIGHT]) {
-        for (const axis of [X_AXIS, Y_AXIS]) {
-            const eyeAxisData = tanData[eye][axis];
-
-            // 2-1. NaN 마스크 생성 및 유효한 인덱스 찾기
-            const validIndices = [];
-            const validValues = [];
-
-            for (let i = 0; i < eyeAxisData.length; i++) {
-                if (!isNaN(eyeAxisData[i]) && eyeAxisData[i] !== null && eyeAxisData[i] !== undefined) {
-                    validIndices.push(i);
-                    validValues.push(eyeAxisData[i]);
-                }
+    for (let i = 0; i < modifiedData.length; i++) {
+        if (modifiedData[i] === true) {
+            if (firstTrueStart === -1) {
+                firstTrueStart = i;
             }
-
-            // 2-2. 유효한 값이 있으면 선형 보간으로 NaN 채우기
-            if (validIndices.length > 0) {
-                for (let i = 0; i < eyeAxisData.length; i++) {
-                    if (isNaN(eyeAxisData[i]) || eyeAxisData[i] === null || eyeAxisData[i] === undefined) {
-                        // 선형 보간 수행
-                        eyeAxisData[i] = linearInterpolate(i, validIndices, validValues);
-                    }
-                }
+        } else {
+            if (firstTrueStart !== -1 && firstTrueEnd === -1) {
+                firstTrueEnd = i - 1;
+                break;
             }
         }
     }
 
-    // 3. 각 눈과 축에 이동 평균 적용 (노이즈 제거)
-    const smoothedData = {
-        [LEFT]: {
-            [X_AXIS]: [],
-            [Y_AXIS]: [],
-        },
-        [RIGHT]: {
-            [X_AXIS]: [],
-            [Y_AXIS]: [],
-        },
-    };
+    // 끝까지 true인 경우 처리
+    if (firstTrueStart !== -1 && firstTrueEnd === -1) {
+        firstTrueEnd = modifiedData.length - 1;
+    }
 
-    for (const eye of [LEFT, RIGHT]) {
-        for (const axis of [X_AXIS, Y_AXIS]) {
-            smoothedData[eye][axis] = movingAverage(tanData[eye][axis]);
+    // 첫 번째 true 구간을 false로 변경
+    if (firstTrueStart !== -1) {
+        for (let i = firstTrueStart; i <= firstTrueEnd; i++) {
+            modifiedData[i] = false;
         }
     }
 
-    // 4. 소수점 버림 적용
-    const intData = {
-        [LEFT]: {
-            [X_AXIS]: smoothedData[LEFT][X_AXIS].map((v) => Math.floor(v)),
-            [Y_AXIS]: smoothedData[LEFT][Y_AXIS].map((v) => Math.floor(v)),
-        },
-        [RIGHT]: {
-            [X_AXIS]: smoothedData[RIGHT][X_AXIS].map((v) => Math.floor(v)),
-            [Y_AXIS]: smoothedData[RIGHT][Y_AXIS].map((v) => Math.floor(v)),
-        },
-    };
-
-    return intData;
+    return modifiedData;
 };
+
+/**
+ * 배열에서 마지막 true 구간을 false로 변경
+ * @param {boolean[]} data - boolean 배열
+ * @returns {boolean[]} 마지막 true 구간이 false로 변경된 새 배열
+ */
+export const removeLastTrueRegion = (data) => {
+    const modifiedData = [...data];
+    let lastTrueStart = -1;
+    let lastTrueEnd = -1;
+
+    // 배열을 역순으로 순회하여 마지막 true 구간 찾기
+    for (let i = modifiedData.length - 1; i >= 0; i--) {
+        if (modifiedData[i] === true) {
+            if (lastTrueEnd === -1) {
+                lastTrueEnd = i;
+            }
+        } else {
+            if (lastTrueEnd !== -1 && lastTrueStart === -1) {
+                lastTrueStart = i + 1;
+                break;
+            }
+        }
+    }
+
+    // 처음부터 true인 경우 처리
+    if (lastTrueEnd !== -1 && lastTrueStart === -1) {
+        lastTrueStart = 0;
+    }
+
+    // 마지막 true 구간을 false로 변경
+    if (lastTrueStart !== -1) {
+        for (let i = lastTrueStart; i <= lastTrueEnd; i++) {
+            modifiedData[i] = false;
+        }
+    }
+
+    return modifiedData;
+};
+

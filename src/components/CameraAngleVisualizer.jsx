@@ -3,13 +3,13 @@ import React from "react";
 
 const CameraAngleVisualizer = React.memo(({ angle = 0 }) => {
     const width = 640;
-    const height = 360;
+    const height = 250;
 
     // 비율에 맞춰 반지름 계산
     const minDimension = Math.min(width, height);
-    const radius = minDimension * 0.6;
+    const radius = minDimension * 0.8;
     const centerX = width / 2;
-    const centerY = height * 0.25;
+    const centerY = height * 0.1;
 
     // 각도기 눈금 생성 (180도에서 시작해서 0도로)
     const renderProtractorTicks = () => {
