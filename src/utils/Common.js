@@ -45,14 +45,8 @@ export const utilConvertToMillis = (strTime) => {
             break;
         case diffTime > 604800:
             var date = new Date(time * 1000);
-            var month = date.getMonth() + 1;
-            var day = date.getDate();
-            if (date.getMonth() + 1 < 10) {
-                month = "0" + date.getMonth() + 1;
-            }
-            if (date.getDate() < 10) {
-                day = "0" + date.getDate();
-            }
+            var month = String(date.getMonth() + 1).padStart(2, "0");
+            var day = String(date.getDate()).padStart(2, "0");
             postTime = date.getFullYear() + "-" + month + "-" + day;
             break;
         default:

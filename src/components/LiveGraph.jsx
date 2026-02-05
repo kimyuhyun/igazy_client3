@@ -13,9 +13,7 @@ import { LEFT, RIGHT, X_AXIS, Y_AXIS } from "../utils/Constants";
 import { verticalLinePlugin } from "../utils/VerticalLinePlugin";
 import { Line } from "react-chartjs-2";
 import { analyzeHidePatternsFromProcessedData } from "../utils/hideRegionAnalyzer";
-import { prepareVisualizationData, removeFirstTrueRegion, removeLastTrueRegion } from "../utils/ChartDataProcessor";
-// import { prepareVisualizationData } from "../utils/NewChartDataProcessor";
-import { createChartClickHandler, createChartHoverHandler } from "../utils/ChartEventHandlers";
+import { prepareVisualizationData } from "../utils/ChartDataProcessor";
 import { createChartOptionsX, createChartOptionsY } from "../utils/ChartOptions";
 import useVariableStore from "../stores/useVariableStore";
 
@@ -38,26 +36,60 @@ const backgroundColorPlugin = {
 
         ctx.save();
 
-        // OD isHide 데이터로 빨간 배경 그리기
+        // OD isHide 데이터로 빨간 배경 그리기 (첫 번째 true 구간 제외)
         if (data[1] && Array.isArray(data[1].isHide)) {
-            data[1].isHide.forEach((isHide, index) => {
-                if (isHide) {
+            const isHideArray = data[1].isHide;
+            let firstRegionEnded = false;
+            let sawTrue = false;
+
+            isHideArray.forEach((isHide, index) => {
+                // 첫 번째 true 구간 감지 및 건너뛰기
+                if (!firstRegionEnded) {
+                    if (isHide === true) {
+                        sawTrue = true;
+                        return; // 첫 번째 true 구간은 그리지 않음
+                    }
+                    if (isHide === false && sawTrue) {
+                        firstRegionEnded = true;
+                    }
+                }
+
+                // 첫 번째 구간 이후의 true만 빨간색으로 그리기
+                if (firstRegionEnded && isHide) {
                     const xStart = x.getPixelForValue(index);
                     const xEnd = x.getPixelForValue(index + 1);
-
-                    ctx.fillStyle = "rgba(255, 0, 0, 0.3)";
+                    ctx.fillStyle = "rgba(255, 0, 0, 0.2)";
                     ctx.fillRect(xStart, top, xEnd - xStart, height);
                 }
             });
         }
 
-        // OS isHide 데이터로 파란 배경 그리기
+        // OS isHide 데이터로 파란 배경 그리기 (4번째 true 구간 제외)
         if (data[0] && Array.isArray(data[0].isHide)) {
-            data[0].isHide.forEach((isHide, index) => {
+            const isHideArray = data[0].isHide;
+            let regionCount = 0;
+            let inRegion = false;
+
+            isHideArray.forEach((isHide, index) => {
+                // 새로운 true 구간 시작 감지
+                if (isHide === true && !inRegion) {
+                    regionCount++;
+                    inRegion = true;
+                }
+                // 구간 종료 감지
+                if (isHide === false && inRegion) {
+                    inRegion = false;
+                }
+
+                // 4번째 구간은 건너뛰기
+                if (regionCount === 4 && isHide) {
+                    return;
+                }
+
+                // 나머지 true 구간은 파란색으로 그리기
                 if (isHide) {
                     const xStart = x.getPixelForValue(index);
                     const xEnd = x.getPixelForValue(index + 1);
-
                     ctx.fillStyle = "rgba(0, 0, 255, 0.2)";
                     ctx.fillRect(xStart, top, xEnd - xStart, height);
                 }
@@ -88,8 +120,6 @@ const dataLabelPlugin = {
         data.datasets.forEach((dataset, datasetIndex) => {
             const eye = datasetIndex === 0 ? "od" : "os"; // OD는 첫 번째, OS는 두 번째
             const indices = highlightIndices[axis][eye];
-
-            console.log("@@@@", indices);
 
             dataset.data.forEach((value, index) => {
                 if (indices.includes(index)) {
@@ -122,7 +152,6 @@ const dataLabelPlugin = {
         ctx.restore();
     },
 };
-
 
 const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, currentFrameRef }) => {
     const { MAX_FRAME, DISTANCE, ANGLE, PATIENT_NUM, PATIENT_NAME, LIMBUS_MM, LIMBUS_PX } = useVariableStore();
@@ -160,7 +189,6 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
             ChartJS.register(dataLabelPlugin);
         }
     }, []);
-
 
     // 배열 데이터를 직접 처리 (useMemo로 성능 최적화)
     const odXData = useMemo(() => {
@@ -237,13 +265,9 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
         };
 
         const newData = prepareVisualizationData(rawData);
-        // const newData = prepareVisualizationDataInt(rawData);
 
-        // odIsHideData의 첫 번째 true 구간을 false로 변경
-        const modifiedOdIsHideData = removeFirstTrueRegion(odIsHideData);
-
-        // osIsHideData의 마지막 true 구간을 false로 변경
-        const modifiedOsIsHideData = removeLastTrueRegion(osIsHideData);
+        newData[LEFT].isHide = osIsHideData;
+        newData[RIGHT].isHide = odIsHideData;
 
         /**
          * odIsHideData = false 의 의미는
@@ -254,10 +278,6 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
          * true: 전기 신호가 들어갔다. 고로 닫혔다.
          * false: 전기 신호가 들어가지 않았다. 고로 열렸다.
          */
-
-        newData[LEFT].isHide = modifiedOsIsHideData;
-        newData[RIGHT].isHide = modifiedOdIsHideData;
-
 
         return newData;
     }, [odXData, osXData, odYData, osYData, osIsHideData, odIsHideData]);
@@ -273,22 +293,10 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
             os: {
                 x: processedData[LEFT][X_AXIS][renderedFrame],
                 y: processedData[LEFT][Y_AXIS][renderedFrame],
-            }
+            },
         };
-        setManualPoints(prev => ({ ...prev, [type]: currentData }));
-        console.log(`${type} point captured:`, currentData);
+        setManualPoints((prev) => ({ ...prev, [type]: currentData }));
     };
-
-    // 차트 이벤트 핸들러 생성 (클릭 시 로그만 출력, 저장 안 함)
-    // const handleChartClick = useMemo(
-    //     () => createChartClickHandler(renderedFrame, processedData),
-    //     [renderedFrame, processedData]
-    // );
-
-    const handleChartHover = useMemo(
-        () => createChartHoverHandler(renderedFrame),
-        [renderedFrame]
-    );
 
     // processedData가 준비된 후 분석 실행
     useEffect(() => {
@@ -298,7 +306,6 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
 
         if (processedData && processedData[LEFT] && processedData[RIGHT]) {
             const analysisResults = analyzeHidePatternsFromProcessedData(processedData);
-            console.log("분석 결과:", analysisResults);
 
             // 1구간이 존재하는 경우만 처리
             if (analysisResults && analysisResults.length > 0 && analysisResults[0]) {
@@ -370,7 +377,7 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
                 backgroundColor: "rgba(255,0,0,0.1)",
                 borderWidth: 1,
                 tension: 0.4,
-                cubicInterpolationMode: 'monotone',
+                cubicInterpolationMode: "monotone",
                 ...getPointConfig(processedData[RIGHT][X_AXIS], "x", "od", "red"),
             },
             {
@@ -380,7 +387,7 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
                 backgroundColor: "rgba(0,0,255,0.1)",
                 borderWidth: 1,
                 tension: 0.4,
-                cubicInterpolationMode: 'monotone',
+                cubicInterpolationMode: "monotone",
                 ...getPointConfig(processedData[LEFT][X_AXIS], "x", "os", "blue"),
             },
         ],
@@ -396,7 +403,7 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
                 backgroundColor: "rgba(255,0,0,0.1)",
                 borderWidth: 1,
                 tension: 0.4,
-                cubicInterpolationMode: 'monotone',
+                cubicInterpolationMode: "monotone",
                 ...getPointConfig(processedData[RIGHT][Y_AXIS], "y", "od", "red"),
             },
             {
@@ -406,32 +413,30 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
                 backgroundColor: "rgba(0,0,255,0.1)",
                 borderWidth: 1,
                 tension: 0.4,
-                cubicInterpolationMode: 'monotone',
+                cubicInterpolationMode: "monotone",
                 ...getPointConfig(processedData[LEFT][Y_AXIS], "y", "os", "blue"),
             },
         ],
     };
 
     const chartOptionsX = useMemo(
-        () => createChartOptionsX({
-            renderedFrame,
-            actualMaxFrame,
-            processedData,
-            // handleChartClick, // 클릭 리스너 제거
-            handleChartHover,
-        }),
-        [renderedFrame, actualMaxFrame, processedData, handleChartHover]
+        () =>
+            createChartOptionsX({
+                renderedFrame,
+                actualMaxFrame,
+                processedData,
+            }),
+        [renderedFrame, actualMaxFrame, processedData]
     );
 
     const chartOptionsY = useMemo(
-        () => createChartOptionsY({
-            renderedFrame,
-            actualMaxFrame,
-            processedData,
-            // handleChartClick, // 클릭 리스너 제거
-            handleChartHover,
-        }),
-        [renderedFrame, actualMaxFrame, processedData, handleChartHover]
+        () =>
+            createChartOptionsY({
+                renderedFrame,
+                actualMaxFrame,
+                processedData,
+            }),
+        [renderedFrame, actualMaxFrame, processedData]
     );
 
     const showPDRport = async () => {
@@ -452,7 +457,7 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
             regionNumber: regionNumber,
             frameCount: 1,
             frameRange: [point.frame, point.frame],
-            indexRange: [point.frame, point.frame]
+            indexRange: [point.frame, point.frame],
         });
 
         // Source (6번)
@@ -465,13 +470,11 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
             currentData[7] = createPointObject(manualPoints.dest, "OD show, OS hide", 7);
         }
 
-        console.log("Final Report Data:", currentData);
-
         localStorage.setItem("ODResultsData", JSON.stringify(odResults));
         localStorage.setItem("OSResultsData", JSON.stringify(osResults));
         localStorage.setItem("PDReportData", JSON.stringify(currentData));
         window.open(
-            `/igazy_client3/pd_report?patient_num=${PATIENT_NUM}&patient_name=${PATIENT_NAME}&distance=${DISTANCE}&angle=${ANGLE}&limbus_mm=${LIMBUS_MM}&limbus_px=${LIMBUS_PX}`,
+            `/pd_report?patient_num=${PATIENT_NUM}&patient_name=${PATIENT_NAME}&distance=${DISTANCE}&angle=${ANGLE}&limbus_mm=${LIMBUS_MM}&limbus_px=${LIMBUS_PX}`,
             "_blank"
         );
     };
@@ -488,35 +491,43 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
                     </div>
                     <div className="absolute left-1/2 -translate-x-1/2 font-semibold">X-Axis(px)</div>
 
-                    <div className="flex items-center gap-2">
-                        {/* Source 버튼 */}
-                        <button
-                            type="button"
-                            className={`px-2 py-1 rounded text-xs ${manualPoints.source ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
-                            onClick={() => capturePoint('source')}
-                        >
-                            {manualPoints.source ? `Source (F:${manualPoints.source.frame})` : 'Source'}
-                        </button>
-
-                        {/* Destination 버튼 */}
-                        <button
-                            type="button"
-                            className={`px-2 py-1 rounded text-xs ${manualPoints.dest ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
-                            onClick={() => capturePoint('dest')}
-                        >
-                            {manualPoints.dest ? `Dest (F:${manualPoints.dest.frame})` : 'Dest'}
-                        </button>
-
+                    <div className="flex items-center gap-0">
                         {medianResult.length >= 6 && currentFrameRef != null && (
-                            <button
-                                type="button"
-                                className="bg-green-400 hover:bg-green-600 text-white rounded px-2 py-1"
-                                onClick={() => showPDRport()}
-                            >
-                                결과보기
-                            </button>
+                            <>
+                                {/* Source 버튼 */}
+                                <button
+                                    type="button"
+                                    className={`px-2 py-1 rounded-l text-xs ${
+                                        manualPoints.source
+                                            ? "bg-blue-600 text-white"
+                                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                    }`}
+                                    onClick={() => capturePoint("source")}
+                                >
+                                    {manualPoints.source ? `Source (F:${manualPoints.source.frame})` : "Source"}
+                                </button>
+
+                                {/* Destination 버튼 */}
+                                <button
+                                    type="button"
+                                    className={`px-2 py-1 rounded-r text-xs ${
+                                        manualPoints.dest
+                                            ? "bg-red-600 text-white"
+                                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                    }`}
+                                    onClick={() => capturePoint("dest")}
+                                >
+                                    {manualPoints.dest ? `Dest (F:${manualPoints.dest.frame})` : "Dest"}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="ms-2 bg-green-400 hover:bg-green-600 text-white rounded px-2 py-1"
+                                    onClick={() => showPDRport()}
+                                >
+                                    결과보기
+                                </button>
+                            </>
                         )}
                     </div>
                 </div>

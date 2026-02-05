@@ -21,16 +21,18 @@ export default function MySlider({ max_frame, currentFrameRef, onCurrent }) {
         const handleKeyDown = (e) => {
             if (e.key === "ArrowLeft") {
                 e.preventDefault();
-                handleChange(value - 1);
+                const newFrame = Math.max(0, currentFrameRef?.current - 1 || value - 1);
+                handleChange(newFrame);
             } else if (e.key === "ArrowRight") {
                 e.preventDefault();
-                handleChange(value + 1);
+                const newFrame = Math.min(max_frame - 1, (currentFrameRef?.current || value) + 1);
+                handleChange(newFrame);
             }
         };
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [value, max_frame]);
+    }, [max_frame]);
 
     function handleChange(newValue) {
         const frame = Math.max(0, Math.min(newValue, max_frame - 1)); // 범위 제한

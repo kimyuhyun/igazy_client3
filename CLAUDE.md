@@ -124,5 +124,5 @@ WebSocket 서버: `ws://{IP}:3000`
 ## Deployment
 
 GitHub Pages 배포용으로 설정됨:
-- basename: `/igazy_client3`
+- basename: `/`
 - 빌드 출력: `./dist`

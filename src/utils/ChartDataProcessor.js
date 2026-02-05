@@ -179,6 +179,65 @@ export const removeFirstTrueRegion = (data) => {
  * @param {boolean[]} data - boolean 배열
  * @returns {boolean[]} 마지막 true 구간이 false로 변경된 새 배열
  */
+/**
+ * 실시간 스트림에서 첫 번째 true 구간을 false로 변경하는 프로세서 생성
+ * @returns {Function} 각 프레임마다 호출할 프로세서 함수
+ */
+export const createFirstTrueRegionFilter = () => {
+    let firstRegionEnded = false;
+    let sawTrue = false;
+
+    return (isHide) => {
+        // 이미 첫 번째 구간 처리 완료 → 원본 그대로
+        if (firstRegionEnded) {
+            return isHide;
+        }
+
+        if (isHide === true) {
+            sawTrue = true;
+            return false; // true → false로 강제 변환
+        }
+
+        // false인데 이전에 true를 본 적 있음 → 첫 구간 종료
+        if (isHide === false && sawTrue) {
+            firstRegionEnded = true;
+        }
+
+        return isHide;
+    };
+};
+
+/**
+ * 실시간 스트림에서 첫 번째 true 구간을 false로 변경하는 프로세서 리셋 가능 버전
+ * @returns {Object} { process: Function, reset: Function }
+ */
+export const createResettableFirstTrueRegionFilter = () => {
+    let firstRegionEnded = false;
+    let sawTrue = false;
+
+    return {
+        process: (isHide) => {
+            if (firstRegionEnded) return isHide;
+
+            if (isHide === true) {
+                sawTrue = true;
+                return false;
+            }
+
+            if (isHide === false && sawTrue) {
+                firstRegionEnded = true;
+            }
+
+            return isHide;
+        },
+        reset: () => {
+            firstRegionEnded = false;
+            sawTrue = false;
+        },
+        isEnded: () => firstRegionEnded,
+    };
+};
+
 export const removeLastTrueRegion = (data) => {
     const modifiedData = [...data];
     let lastTrueStart = -1;

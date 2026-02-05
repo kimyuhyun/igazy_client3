@@ -1,4 +1,4 @@
-export default function Popup({ children, width = "6xl", height = "95%", onClose }) {
+export default function Popup({ children, width = "6xl", height = "95", onClose }) {
     const widthClassMap = {
         sm: "max-w-sm",
         md: "max-w-md",
@@ -11,7 +11,9 @@ export default function Popup({ children, width = "6xl", height = "95%", onClose
         "6xl": "max-w-6xl",
     };
 
-    const heightClass = height.includes("%") ? `h-[${height}]` : height;
+    // dvh 사용 (모바일 브라우저 UI 고려), vh fallback
+    const heightNum = height.replace("%", "");
+    const heightClass = `h-[${heightNum}dvh] max-h-[${heightNum}vh]`;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center dark:text-white backdrop-blur-sm">
@@ -21,14 +23,14 @@ export default function Popup({ children, width = "6xl", height = "95%", onClose
             <div
                 className={`
                     relative w-full ${widthClassMap[width] || "max-w-xl"}
-                    m-4 ${heightClass} 
-                    dark:bg-stone-800 bg-white 
-                    rounded-lg shadow-xl 
-                    transform transition-all overflow-hidden
+                    m-4 ${heightClass}
+                    dark:bg-stone-800 bg-white
+                    rounded-lg shadow-xl
+                    transform transition-all overflow-hidden flex flex-col
                 `}
             >
                 {/* 헤더 */}
-                <div className="flex justify-end items-center p-0 pl-4 border-b dark:border-stone-700 border-gray-200">
+                <div className="flex justify-end items-center p-0 pl-4 border-b dark:border-stone-700 border-gray-200 shrink-0">
                     {/* <h2 className="font-semibold">{folder}</h2> */}
                     <button
                         onClick={() => onClose()}
@@ -39,7 +41,7 @@ export default function Popup({ children, width = "6xl", height = "95%", onClose
                 </div>
 
                 {/* 본문 */}
-                <div className={`p-4 h-[95%] overflow-y-auto scrollbar-thin bg-gray-50`}>{children}</div>
+                <div className={`p-4 flex-1 overflow-y-auto scrollbar-thin bg-gray-50`}>{children}</div>
             </div>
         </div>
     );

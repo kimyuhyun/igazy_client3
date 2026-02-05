@@ -31,6 +31,9 @@ const DualImagePlayer = forwardRef(({ odImages, osImages, onFrameChange }, ref) 
                     // 캐시에 저장
                     odImageCacheRef.current[frameIndex] = img;
                 };
+                img.onerror = () => {
+                    console.error(`Failed to load OD image at frame ${frameIndex}`);
+                };
                 img.src = `data:image/jpeg;base64,${odImages[frameIndex]}`;
             }
         }
@@ -50,6 +53,9 @@ const DualImagePlayer = forwardRef(({ odImages, osImages, onFrameChange }, ref) 
                     osCtx.clearRect(0, 0, osCanvas.width, osCanvas.height);
                     osCtx.drawImage(img, 0, 0, osCanvas.width, osCanvas.height);
                     osImageCacheRef.current[frameIndex] = img;
+                };
+                img.onerror = () => {
+                    console.error(`Failed to load OS image at frame ${frameIndex}`);
                 };
                 img.src = `data:image/jpeg;base64,${osImages[frameIndex]}`;
             }

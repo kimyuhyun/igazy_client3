@@ -14,7 +14,7 @@ import LimbusTest from "./pages/LimbusTest";
 function App() {
     return (
         <>
-            <BrowserRouter basename="/igazy_client3">
+            <BrowserRouter basename="/">
                 <Routes>
                     <Route path="/" element={<Measure />} />
                     <Route path="/measure" element={<Measure />} />

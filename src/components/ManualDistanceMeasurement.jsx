@@ -115,6 +115,7 @@ const ManualDistanceMeasurement = React.memo(({ imageSource, onMeasurementComple
     // 마우스 이동 핸들러
     const handleMouseMove = (e) => {
         const canvas = canvasRef.current;
+        if (!canvas) return;
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
@@ -135,6 +136,7 @@ const ManualDistanceMeasurement = React.memo(({ imageSource, onMeasurementComple
         if (points.length >= 2) return;
 
         const canvas = canvasRef.current;
+        if (!canvas) return;
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;

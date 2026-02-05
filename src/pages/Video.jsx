@@ -108,17 +108,21 @@ export default function Video() {
             const arr = [];
             for (const o of data.files) {
                 const tmp = o.fileName.split("_");
-                const date = tmp[2].split("-");
+                const date = tmp[2]?.split("-") || [];
 
                 const obj = {
-                    num: tmp[0],
-                    name1: tmp[1],
+                    num: tmp[0] || "N/A",
+                    name1: tmp[1] || "N/A",
                     fileName: o.fileName,
                     fileSize: formatFileSize(o.fileSize),
                     filePath: o.filePath,
-                    date: `${date[0]}-${date[1]}-${date[2]} ${date[3]}:${date[4]}`,
+                    date: date.length >= 5
+                        ? `${date[0]}-${date[1]}-${date[2]} ${date[3]}:${date[4]}`
+                        : "N/A",
                     // 정렬용 타임스탬프 추가
-                    timestamp: `${date[0]}${date[1]}${date[2]}${date[3]}${date[4]}`,
+                    timestamp: date.length >= 5
+                        ? `${date[0]}${date[1]}${date[2]}${date[3]}${date[4]}`
+                        : "0",
                 };
                 arr.push(obj);
             }

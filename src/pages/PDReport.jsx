@@ -59,7 +59,11 @@ export default function PDReport() {
             if (storedData) {
                 const jsonData = JSON.parse(storedData);
 
-                // console.log(jsonData);
+                // 배열 길이 체크
+                if (!jsonData || jsonData.length < 6) {
+                    console.error("PDReportData requires at least 6 items");
+                    return;
+                }
 
                 const xaxis_od_1st = [jsonData[0].odXMedian, jsonData[1].odXMedian];
                 const xaxis_os_1st = [jsonData[0].osXMedian, jsonData[1].osXMedian];
@@ -80,7 +84,7 @@ export default function PDReport() {
                 let xaxis_os_4th = [];
                 let yaxis_od_4th = [];
                 let yaxis_os_4th = [];
-                if (jsonData.length === 8) {
+                if (jsonData.length >= 8) {
                     xaxis_od_4th = [jsonData[6].odXMedian, jsonData[7].odXMedian];
                     xaxis_os_4th = [jsonData[6].osXMedian, jsonData[7].osXMedian];
                     yaxis_od_4th = [jsonData[6].odYMedian, jsonData[7].odYMedian];

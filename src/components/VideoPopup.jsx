@@ -39,9 +39,9 @@ export default function VideoPopup({ children, onClose }) {
 
 
             <div className={`w-full ${widthClassArr[POPUP_WIDTH_INDEX]}`}>
-                <div className="h-[98vh] w-full bg-white dark:bg-stone-800 rounded transform transition-all overflow-hidden">
+                <div className="h-[98dvh] max-h-[98vh] w-full bg-white dark:bg-stone-800 rounded transform transition-all overflow-hidden flex flex-col">
                     {/* 상단 툴바 */}
-                    <div className="flex flex-row bg-white border-b">
+                    <div className="flex flex-row bg-white border-b shrink-0">
 
                         <RippleButton
                             className="text-black hover:text-gray-200 p-2 transition-colors bg-white"
@@ -75,7 +75,7 @@ export default function VideoPopup({ children, onClose }) {
 
 
                     {/* 팝업 내용 */}
-                    <div className="p-1 h-full overflow-y-auto scrollbar-ultra-thin bg-white">{children}</div>
+                    <div className="p-1 flex-1 overflow-y-auto scrollbar-ultra-thin bg-white">{children}</div>
                 </div>
             </div>
         </div>

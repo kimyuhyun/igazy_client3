@@ -153,8 +153,8 @@ export function calculateMedianValuesFromProcessedData(processedData, startIdx, 
             return { medianValue: null, medianIdx: null };
         }
 
-        // 값으로 정렬
-        const sortedValues = values.sort((a, b) => a[1] - b[1]);
+        // 값으로 정렬 (원본 배열 보존을 위해 복사 후 정렬)
+        const sortedValues = [...values].sort((a, b) => a[1] - b[1]);
         const n = sortedValues.length;
 
         if (n % 2 === 1) {
@@ -203,10 +203,10 @@ export function analyzeHidePatternsFromProcessedData(processedData) {
     const regions = findHideRegionsFromProcessedData(processedData);
     const results = [];
 
-    // console.log("Hide 구간 분석 결과 (processedData):");
-    // console.log("=".repeat(80));
+    // 첫 번째와 마지막 구간 제외
+    const filteredRegions = regions.slice(1, -1);
 
-    regions.forEach((region, index) => {
+    filteredRegions.forEach((region, index) => {
         const regionNumber = index + 1;
         const startIdx = region.startIdx;
         const endIdx = region.endIdx;
