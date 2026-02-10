@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { getTodayTime, getToday } from "../utils/Common";
+import { getTodayTime, getToday } from "../utils/common";
 import LiveGraph from "../components/LiveGraph";
 import A4Page from "../components/A4Page";
-import { calcMM } from "../utils/CalcPxToMm";
-import calculator from "../utils/OldRegressionEyeAngleCalculator";
-// import calculator from "../utils/RegressionEyeAngleCalculator";
+import ExamResultTable from "../components/ExamResultTable";
+import { calcMM } from "../utils/calcPxToMm";
+import calculator from "../utils/oldRegressionEyeAngleCalculator";
+// import calculator from "../utils/regressionEyeAngleCalculator";
+import useManualPointStore from "../stores/useManualPointStore";
 
 export default function PDReport() {
     const [searchParams] = useSearchParams();
@@ -35,19 +37,15 @@ export default function PDReport() {
             return;
         }
 
-        // URL 파라미터 업데이트
         const newParams = new URLSearchParams(searchParams);
         newParams.set("limbus_mm", editLimbusMM);
 
-        // 페이지 새로고침
         navigate(`?${newParams.toString()}`, { replace: true });
         window.location.reload();
     };
 
-
     useEffect(() => {
         (async () => {
-
             const od = localStorage.getItem("ODResultsData");
             const os = localStorage.getItem("OSResultsData");
             if (od && os) {
@@ -59,7 +57,6 @@ export default function PDReport() {
             if (storedData) {
                 const jsonData = JSON.parse(storedData);
 
-                // 배열 길이 체크
                 if (!jsonData || jsonData.length < 6) {
                     console.error("PDReportData requires at least 6 items");
                     return;
@@ -80,15 +77,31 @@ export default function PDReport() {
                 const yaxis_od_3rd = [jsonData[4].odYMedian, jsonData[5].odYMedian];
                 const yaxis_os_3rd = [jsonData[4].osYMedian, jsonData[5].osYMedian];
 
+                // Store에서 매뉴얼 포인트 좌표값 가져오기
+                const { src4th, dst4th, src5th, dst5th } = useManualPointStore.getState();
+
+                // 4th Exam (OD Manual)
                 let xaxis_od_4th = [];
                 let xaxis_os_4th = [];
                 let yaxis_od_4th = [];
                 let yaxis_os_4th = [];
-                if (jsonData.length >= 8) {
-                    xaxis_od_4th = [jsonData[6].odXMedian, jsonData[7].odXMedian];
-                    xaxis_os_4th = [jsonData[6].osXMedian, jsonData[7].osXMedian];
-                    yaxis_od_4th = [jsonData[6].odYMedian, jsonData[7].odYMedian];
-                    yaxis_os_4th = [jsonData[6].osYMedian, jsonData[7].osYMedian];
+                if (src4th && dst4th) {
+                    xaxis_od_4th = [src4th.odX, dst4th.odX];
+                    xaxis_os_4th = [src4th.osX, dst4th.osX];
+                    yaxis_od_4th = [src4th.odY, dst4th.odY];
+                    yaxis_os_4th = [src4th.osY, dst4th.osY];
+                }
+
+                // 5th Exam (OS Manual)
+                let xaxis_od_5th = [];
+                let xaxis_os_5th = [];
+                let yaxis_od_5th = [];
+                let yaxis_os_5th = [];
+                if (src5th && dst5th) {
+                    xaxis_od_5th = [src5th.odX, dst5th.odX];
+                    xaxis_os_5th = [src5th.osX, dst5th.osX];
+                    yaxis_od_5th = [src5th.odY, dst5th.odY];
+                    yaxis_os_5th = [src5th.osY, dst5th.osY];
                 }
 
                 const obj = {
@@ -111,8 +124,12 @@ export default function PDReport() {
                     xaxis_os_4th: calculatePD(xaxis_os_4th, "x", "OS"),
                     yaxis_od_4th: calculatePD(yaxis_od_4th, "y", "OD"),
                     yaxis_os_4th: calculatePD(yaxis_os_4th, "y", "OS"),
+
+                    xaxis_od_5th: calculatePD(xaxis_od_5th, "x", "OD"),
+                    xaxis_os_5th: calculatePD(xaxis_os_5th, "x", "OS"),
+                    yaxis_od_5th: calculatePD(yaxis_od_5th, "y", "OD"),
+                    yaxis_os_5th: calculatePD(yaxis_os_5th, "y", "OS"),
                 };
-                // console.log(obj);
                 setData(obj);
             }
         })();
@@ -125,68 +142,42 @@ export default function PDReport() {
 
     const calculatePD = (points, axis, side) => {
         const difference = points[0] - points[1];
-        console.log("difference", difference);
-
-        let degrees = 0;
-
-        /**
-         * distance 값은 쓰지 않는다. 
-         * limbusMM과 limbusPX를 사용하여 계산하여 사용한다.
-         */
 
         const distance = calcMM(parseFloat(limbusMM), parseFloat(limbusPX));
-        console.log("distance", distance);
-
         setNewDistance(distance);
-
-        // const newDistance = calcMM(parseFloat(limbusMM), parseFloat(limbusPX));
-        // console.log("newDistance", newDistance);
-
-        // if (distance === "") {
-        //     degrees = calculator.calculateEyeAngle(parseFloat(angle), parseInt(newDistance), Math.abs(difference));
-        // } else {
-        //     degrees = calculator.calculateEyeAngle(parseFloat(angle), parseInt(distance), Math.abs(difference));
-        // }
-
-        degrees = calculator.calculateEyeAngle(parseFloat(angle), parseInt(distance), Math.abs(difference));
-
-        console.log(degrees);
+        const degrees = calculator.calculateEyeAngle(parseFloat(angle), parseInt(distance), Math.abs(difference));
 
         if (Number.isNaN(degrees)) {
             return "";
         }
 
-        // PD 계산
         const radians = degrees * (Math.PI / 180);
         const pdValue = Math.tan(radians) * 100;
 
-        // 방향 결정
         let direction = "";
         if (axis === "x") {
-            // X축: ESO(내사시) / EXO(외사시)
-            if (side === "OD") {
-                direction = difference > 0 ? "ESO" : "EXO";
-            } else {
-                // OS
-                direction = difference > 0 ? "ESO" : "EXO";
-            }
+            direction = difference > 0 ? "ESO" : "EXO";
         } else {
-            // Y축: HYPER(상사위) / HYPO(하사위)
             direction = difference > 0 ? "HYPO" : "HYPER";
         }
 
-        // return `${degrees.toFixed(2)}° / ${pdValue.toFixed(2)} ${direction}`;
         return `${degrees.toFixed(1)}° / ${pdValue.toFixed(1)} ${direction}`;
     };
+
+    const examTables = [
+        { title: "1st Exam", hoverColor: "blue", suffix: "1st" },
+        { title: "2nd Exam", hoverColor: "green", suffix: "2nd" },
+        { title: "3rd Exam", hoverColor: "purple", suffix: "3rd" },
+        { title: "OD Manual Exam", hoverColor: "orange", suffix: "4th" },
+        { title: "OS Manual Exam", hoverColor: "orange", suffix: "5th" },
+    ];
 
     return (
         <div className="bg-gray-400 print:bg-white p-4 print:p-0 relative">
             {/* 왼쪽 상단 limbus_mm 수정 input */}
             <div className="fixed top-4 left-4 z-50 print:hidden">
                 <div className="bg-white rounded-lg shadow-lg p-3 border-2 border-blue-500">
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                        윤부 지름 (mm)
-                    </label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">윤부 지름 (mm)</label>
                     <div className="flex gap-2 items-center">
                         <input
                             type="number"
@@ -194,7 +185,7 @@ export default function PDReport() {
                             value={editLimbusMM}
                             onChange={(e) => setEditLimbusMM(e.target.value)}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
+                                if (e.key === "Enter") {
                                     handleLimbusMMChange();
                                 }
                             }}
@@ -209,7 +200,9 @@ export default function PDReport() {
                                 +0.1
                             </button>
                             <button
-                                onClick={() => setEditLimbusMM((prev) => Math.max(0, parseFloat(prev) - 0.1).toFixed(1))}
+                                onClick={() =>
+                                    setEditLimbusMM((prev) => Math.max(0, parseFloat(prev) - 0.1).toFixed(1))
+                                }
                                 className="px-2 py-0.5 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors font-semibold"
                                 title="-0.1"
                             >
@@ -238,55 +231,30 @@ export default function PDReport() {
                         <span className="text-sm text-gray-600">{getToday()}</span>
                     </div>
 
-                    {/* Patient Information Table */}
                     <table className="w-full border-collapse border-1 border-gray-400">
                         <tbody>
                             <tr>
-                                <td colSpan={4} className="text-xl font-bold border-1 border-gray-300 py-3 text-black">
+                                <td colSpan={4} className="text-xl font-bold border-1 border-gray-300 py-2 text-black">
                                     PATIENT INFORMATION
                                 </td>
                             </tr>
                             <tr>
-                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">
-                                    Patient Number
-                                </th>
-                                <td className="text-sm border border-gray-300 py-3 px-4 text-gray-900 font-medium">
-                                    {patientNum || '-'}
-                                </td>
-                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">
-                                    Patient Name
-                                </th>
-                                <td className="text-sm border border-gray-300 py-3 px-4 text-gray-900 font-medium">
-                                    {patientName || '-'}
-                                </td>
+                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">Patient Number</th>
+                                <td className="text-sm border border-gray-300 py-2 px-4 text-gray-900 font-medium">{patientNum || "-"}</td>
+                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">Patient Name</th>
+                                <td className="text-sm border border-gray-300 py-2 px-4 text-gray-900 font-medium">{patientName || "-"}</td>
                             </tr>
                             <tr>
-                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">
-                                    Distance
-                                </th>
-                                <td className="text-sm border border-gray-300 py-3 px-4 text-gray-900 font-medium">
-                                    {`${newDistance ? `${parseFloat(newDistance).toFixed(1)}mm` : '-'}`}
-                                </td>
-                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">
-                                    Angle
-                                </th>
-                                <td className="text-sm border border-gray-300 py-3 px-4 text-gray-900 font-medium">
-                                    {`${angle}°` || '-'}
-                                </td>
+                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">Distance</th>
+                                <td className="text-sm border border-gray-300 py-2 px-4 text-gray-900 font-medium">{`${newDistance ? `${parseFloat(newDistance).toFixed(1)}mm` : "-"}`}</td>
+                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">Angle</th>
+                                <td className="text-sm border border-gray-300 py-2 px-4 text-gray-900 font-medium">{`${angle}°` || "-"}</td>
                             </tr>
                             <tr>
-                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">
-                                    White to White
-                                </th>
-                                <td className="text-sm border border-gray-300 py-3 px-4 text-gray-900 font-medium">
-                                    {`${limbusMM}mm` || '-'}
-                                </td>
-                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">
-                                    White to White(px)
-                                </th>
-                                <td className="text-sm border border-gray-300 py-3 px-4 text-gray-900 font-medium">
-                                    {limbusPX ? `${parseFloat(limbusPX).toFixed(1)}px` : '-'}
-                                </td>
+                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">White to White</th>
+                                <td className="text-sm border border-gray-300 py-2 px-4 text-gray-900 font-medium">{`${limbusMM}mm` || "-"}</td>
+                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">White to White(px)</th>
+                                <td className="text-sm border border-gray-300 py-2 px-4 text-gray-900 font-medium">{limbusPX ? `${parseFloat(limbusPX).toFixed(1)}px` : "-"}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -296,111 +264,21 @@ export default function PDReport() {
                     </div>
                 </A4Page>
 
-                <A4Page>
+                <A4Page className="flex flex-col justify-between gap-8">
                     <div className="border-b-4 border-yellow-400 flex flex-row justify-between">
                         <div className="bg-yellow-400 px-4 py-2 font-bold">2</div>
                         <div className="flex items-end text-xs pb-1">{getTodayTime()}</div>
                     </div>
 
-                    <table className="w-full mt-12 border-collapse border border-gray-300">
-                        <tbody>
-                            <tr className="bg-gray-300">
-                                <td colSpan={3} className="text-center text-xl font-bold border border-gray-300 py-3 text-white">
-                                    1st Exam
-                                </td>
-                            </tr>
-                            <tr className="bg-gradient-to-r from-gray-100 to-gray-200">
-                                <th className="border border-gray-300 py-2 px-4 font-semibold text-gray-700 w-24"></th>
-                                <th className="border border-gray-300 py-2 px-4 font-semibold text-gray-700">X-axis</th>
-                                <th className="border border-gray-300 py-2 px-4 font-semibold text-gray-700">Y-axis</th>
-                            </tr>
-                            <tr className="text-center hover:bg-blue-50 transition-colors">
-                                <td className="border border-gray-300 py-3 px-4 font-medium bg-gray-50 text-gray-700">OD</td>
-                                <td className="border border-gray-300 py-3 px-4 text-gray-800">{data["xaxis_od_1st"]}</td>
-                                <td className="border border-gray-300 py-3 px-4 text-gray-800">{data["yaxis_od_1st"]}</td>
-                            </tr>
-                            <tr className="text-center hover:bg-blue-50 transition-colors">
-                                <td className="border border-gray-300 py-3 px-4 font-medium bg-gray-50 text-gray-700">OS</td>
-                                <td className="border border-gray-300 py-3 px-4 text-gray-800">{data["xaxis_os_1st"]}</td>
-                                <td className="border border-gray-300 py-3 px-4 text-gray-800">{data["yaxis_os_1st"]}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <table className="w-full mt-12 border-collapse border border-gray-300 shadow-sm">
-                        <tbody>
-                            <tr className="bg-gray-300">
-                                <td colSpan={3} className="text-center text-xl font-bold border border-gray-300 py-3 text-white">
-                                    2nd Exam
-                                </td>
-                            </tr>
-                            <tr className="bg-gradient-to-r from-gray-100 to-gray-200">
-                                <th className="border border-gray-300 py-2 px-4 font-semibold text-gray-700 w-24"></th>
-                                <th className="border border-gray-300 py-2 px-4 font-semibold text-gray-700">X-axis</th>
-                                <th className="border border-gray-300 py-2 px-4 font-semibold text-gray-700">Y-axis</th>
-                            </tr>
-                            <tr className="text-center hover:bg-green-50 transition-colors">
-                                <td className="border border-gray-300 py-3 px-4 font-medium bg-gray-50 text-gray-700">OD</td>
-                                <td className="border border-gray-300 py-3 px-4 text-gray-800">{data["xaxis_od_2nd"]}</td>
-                                <td className="border border-gray-300 py-3 px-4 text-gray-800">{data["yaxis_od_2nd"]}</td>
-                            </tr>
-                            <tr className="text-center hover:bg-green-50 transition-colors">
-                                <td className="border border-gray-300 py-3 px-4 font-medium bg-gray-50 text-gray-700">OS</td>
-                                <td className="border border-gray-300 py-3 px-4 text-gray-800">{data["xaxis_os_2nd"]}</td>
-                                <td className="border border-gray-300 py-3 px-4 text-gray-800">{data["yaxis_os_2nd"]}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <table className="w-full mt-12 border-collapse border border-gray-300 shadow-sm">
-                        <tbody>
-                            <tr className="bg-gray-300">
-                                <td colSpan={3} className="text-center text-xl font-bold border border-gray-300 py-3 text-white">
-                                    3rd Exam
-                                </td>
-                            </tr>
-                            <tr className="bg-gradient-to-r from-gray-100 to-gray-200">
-                                <th className="border border-gray-300 py-2 px-4 font-semibold text-gray-700 w-24"></th>
-                                <th className="border border-gray-300 py-2 px-4 font-semibold text-gray-700">X-axis</th>
-                                <th className="border border-gray-300 py-2 px-4 font-semibold text-gray-700">Y-axis</th>
-                            </tr>
-                            <tr className="text-center hover:bg-purple-50 transition-colors">
-                                <td className="border border-gray-300 py-3 px-4 font-medium bg-gray-50 text-gray-700">OD</td>
-                                <td className="border border-gray-300 py-3 px-4 text-gray-800">{data["xaxis_od_3rd"]}</td>
-                                <td className="border border-gray-300 py-3 px-4 text-gray-800">{data["yaxis_od_3rd"]}</td>
-                            </tr>
-                            <tr className="text-center hover:bg-purple-50 transition-colors">
-                                <td className="border border-gray-300 py-3 px-4 font-medium bg-gray-50 text-gray-700">OS</td>
-                                <td className="border border-gray-300 py-3 px-4 text-gray-800">{data["xaxis_os_3rd"]}</td>
-                                <td className="border border-gray-300 py-3 px-4 text-gray-800">{data["yaxis_os_3rd"]}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <table className="w-full mt-12 border-collapse border border-gray-300 shadow-sm">
-                        <tbody>
-                            <tr className="bg-gray-300">
-                                <td colSpan={3} className="text-center text-xl font-bold border border-gray-300 py-3 text-white">
-                                    4th Exam
-                                </td>
-                            </tr>
-                            <tr className="bg-gradient-to-r from-gray-100 to-gray-200">
-                                <th className="border border-gray-300 py-2 px-4 font-semibold text-gray-700 w-24"></th>
-                                <th className="border border-gray-300 py-2 px-4 font-semibold text-gray-700">X-axis</th>
-                                <th className="border border-gray-300 py-2 px-4 font-semibold text-gray-700">Y-axis</th>
-                            </tr>
-                            <tr className="text-center hover:bg-orange-50 transition-colors">
-                                <td className="border border-gray-300 py-3 px-4 font-medium bg-gray-50 text-gray-700">OD</td>
-                                <td className="border border-gray-300 py-3 px-4 text-gray-800">{data["xaxis_od_4th"]}</td>
-                                <td className="border border-gray-300 py-3 px-4 text-gray-800">{data["yaxis_od_4th"]}</td>
-                            </tr>
-                            <tr className="text-center hover:bg-orange-50 transition-colors">
-                                <td className="border border-gray-300 py-3 px-4 font-medium bg-gray-50 text-gray-700">OS</td>
-                                <td className="border border-gray-300 py-3 px-4 text-gray-800">{data["xaxis_os_4th"]}</td>
-                                <td className="border border-gray-300 py-3 px-4 text-gray-800">{data["yaxis_os_4th"]}</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    {examTables.map((exam) => (
+                        <ExamResultTable
+                            key={exam.suffix}
+                            title={exam.title}
+                            hoverColor={exam.hoverColor}
+                            data={data}
+                            suffix={exam.suffix}
+                        />
+                    ))}
                 </A4Page>
             </div>
         </div>

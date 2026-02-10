@@ -18,7 +18,7 @@ import {
     Settings,
     Play,
 } from "lucide-react";
-import menu from "../utils/Menus";
+import menu from "../utils/menus";
 import useVariableStore from "../stores/useVariableStore";
 
 const iconMap = {

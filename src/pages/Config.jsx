@@ -132,6 +132,19 @@ export default function Config() {
                     </div>
                 </div>
 
+                <div className="flex items-center gap-4">
+                    <label className="w-32 font-semibold text-gray-700 dark:text-gray-200"></label>
+                    <div className="flex flex-col">
+                        <a
+                            href={`http://${IP}:8088/cam_on`}
+                            target="_blank"
+                            className="border-b border-blue-600 text-blue-600"
+                        >
+                            원본영상보기 (IGazy 가 핫스팟에 연결된 주소를 넣어줘야한다)
+                        </a>
+                    </div>
+                </div>
+
                 <div className="flex mt-4">
                     <RippleButton className="bg-blue-600 text-white px-4 py-2" onClick={() => handleSave()}>
                         <SaveIcon />

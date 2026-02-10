@@ -9,8 +9,10 @@ import RippleButton from "./RippleButton";
 import toast from "react-hot-toast";
 import axios from "axios";
 import { RulerIcon, X } from "lucide-react";
-import EyeWsClient from "../utils/EyeWsClient";
-import { calcMM } from "../utils/CalcPxToMm";
+import EyeWsClient from "../utils/eyeWsClient";
+import { calcMM } from "../utils/calcPxToMm";
+import { drawBase64ToCanvas } from "../utils/canvasUtils";
+import EyeCanvas from "./EyeCanvas";
 
 const DualLiveFrame = ({ onClose }) => {
     const { IP, LIMBUS_MM, DISTANCE, ANGLE, setAngle, setDistance, setLimbusPX } =
@@ -30,30 +32,6 @@ const DualLiveFrame = ({ onClose }) => {
     const [distanceResultImage, setDistanceResultImage] = useState(null);
     const [angleResultImage, setAngleResultImage] = useState(null);
     const [buttonTopPosition, setButtonTopPosition] = useState(180);
-
-    const getStatusBadge = (status) => {
-        const statusConfig = {
-            connecting: { color: "text-yellow-400", text: "⏳ 연결중" },
-            connected: { color: "text-green-400", text: "● LIVE" },
-            retrying: { color: "text-orange-400", text: "🔄 재시도" },
-            failed: { color: "text-red-400", text: "❌ 실패" },
-            disconnected: { color: "text-gray-400", text: "⏹️ 중지" },
-        };
-        return statusConfig[status] || statusConfig.disconnected;
-    };
-
-    const drawBase64ToCanvas = (base64, canvas) => {
-        if (!canvas || !base64) return;
-
-        const ctx = canvas.getContext("2d");
-        const img = new Image();
-        img.src = `data:image/jpeg;base64,${base64}`;
-
-        img.onload = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        };
-    };
 
     const getCamToEyeDistance = async () => {
         try {
@@ -190,30 +168,14 @@ const DualLiveFrame = ({ onClose }) => {
                 <div className="flex-1 overflow-auto scrollbar-ultra-thin">
 
                     {/* Live Camera Feeds */}
-                    <div className="grid grid-cols-2 gap-1 max-w-5xl mx-auto">
-                        <div className="relative bg-gray-800 overflow-hidden">
-                            <div className="absolute top-0 w-full px-2 py-1 flex justify-between items-center z-10">
-                                <h2 className="text-lg font-semibold text-white">OD</h2>
-                                <span className={`text-xs ${getStatusBadge(connectionStatus.OD).color}`}>
-                                    {getStatusBadge(connectionStatus.OD).text}
-                                </span>
-                            </div>
-                            <canvas ref={odCanvasRef} className="aspect-[16/9] w-full bg-black" width={640} height={360} />
+                    <div className="grid grid-cols-2 gap-1 max-w-7xl mx-auto mt-1">
+                        <EyeCanvas ref={odCanvasRef} side="OD" status={connectionStatus.OD}>
                             <CenterCrosshair ref={crosshairRef} />
-                        </div>
+                        </EyeCanvas>
 
-                        <div className="relative bg-gray-800 overflow-hidden">
-                            <div className="absolute top-0 w-full px-2 py-1 flex justify-between items-center z-10">
-                                <h2 className="text-lg font-semibold text-white">OS</h2>
-                                <span className={`text-xs ${getStatusBadge(connectionStatus.OS).color}`}>
-                                    {getStatusBadge(connectionStatus.OS).text}
-                                </span>
-                            </div>
-                            <canvas ref={osCanvasRef} className="aspect-[16/9] w-full bg-black" width={640} height={360} />
+                        <EyeCanvas ref={osCanvasRef} side="OS" status={connectionStatus.OS}>
                             <CenterCrosshair />
-                        </div>
-
-
+                        </EyeCanvas>
                     </div>
 
                     {/* Measurement Button */}

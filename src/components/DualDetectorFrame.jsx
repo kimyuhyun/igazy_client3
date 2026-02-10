@@ -1,6 +1,8 @@
 import React, { useRef, useEffect, useState, useImperativeHandle, forwardRef } from "react";
 import useVariableStore from "../stores/useVariableStore";
-import EyeWsClient from "../utils/EyeWsClient";
+import EyeWsClient from "../utils/eyeWsClient";
+import { drawBase64ToCanvas } from "../utils/canvasUtils";
+import EyeCanvas from "./EyeCanvas";
 
 const DualDetectorFrame = forwardRef(({ onEnded, onOdResults, onOsResults }, ref) => {
     const { IP, MAX_FRAME, DISTANCE, ANGLE, setDistance, setAngle } = useVariableStore();
@@ -14,30 +16,6 @@ const DualDetectorFrame = forwardRef(({ onEnded, onOdResults, onOsResults }, ref
     const odCanvasRef = useRef(null);
     const osCanvasRef = useRef(null);
     const frameBufferRef = useRef([]);
-
-    const getStatusBadge = (status) => {
-        const statusConfig = {
-            connecting: { color: "text-yellow-400", text: "⏳ 연결중" },
-            connected: { color: "text-green-400", text: "● LIVE" },
-            retrying: { color: "text-orange-400", text: "🔄 재시도" },
-            failed: { color: "text-red-400", text: "❌ 실패" },
-            disconnected: { color: "text-gray-400", text: "⏹️ 중지" },
-        };
-        return statusConfig[status] || statusConfig.disconnected;
-    };
-
-    const drawBase64ToCanvas = (base64, canvas) => {
-        if (!canvas || !base64) return;
-
-        const ctx = canvas.getContext("2d");
-        const img = new Image();
-        img.src = `data:image/jpeg;base64,${base64}`;
-
-        img.onload = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        };
-    };
 
     // 컴포넌트 마운트 시 자동 시작
     useEffect(() => {
@@ -110,27 +88,8 @@ const DualDetectorFrame = forwardRef(({ onEnded, onOdResults, onOsResults }, ref
     return (
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
-                {/* OD (우안) */}
-                <div className="relative bg-gray-800 rounded shadow overflow-hidden">
-                    <div className="absolute top-0 w-full px-2 py-1 flex justify-between items-center z-10">
-                        <h2 className="text-xl font-semibold text-white">OD</h2>
-                        <span className={`text-xs ${getStatusBadge(connectionStatus.OD).color}`}>
-                            {getStatusBadge(connectionStatus.OD).text}
-                        </span>
-                    </div>
-                    <canvas ref={odCanvasRef} className="aspect-[16/9] w-full bg-black" width={640} height={360} />
-                </div>
-
-                {/* OS (좌안) */}
-                <div className="relative bg-gray-800 rounded shadow overflow-hidden">
-                    <div className="absolute top-0 w-full px-2 py-1 flex justify-between items-center z-10">
-                        <h2 className="text-xl font-semibold text-white">OS</h2>
-                        <span className={`text-xs ${getStatusBadge(connectionStatus.OS).color}`}>
-                            {getStatusBadge(connectionStatus.OS).text}
-                        </span>
-                    </div>
-                    <canvas ref={osCanvasRef} className="aspect-[16/9] w-full bg-black" width={640} height={360} />
-                </div>
+                <EyeCanvas ref={odCanvasRef} side="OD" status={connectionStatus.OD} />
+                <EyeCanvas ref={osCanvasRef} side="OS" status={connectionStatus.OS} />
             </div>
         </div>
     );

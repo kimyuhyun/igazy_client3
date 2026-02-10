@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useImperativeHandle, forwardRef, useCallback } from "react";
 import toast from "react-hot-toast";
+import EyeCanvas from "./EyeCanvas";
 
 const DualImagePlayer = forwardRef(({ odImages, osImages, onFrameChange }, ref) => {
     const odCanvasRef = useRef(null);
@@ -113,21 +114,8 @@ const DualImagePlayer = forwardRef(({ odImages, osImages, onFrameChange }, ref) 
     return (
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
-                {/* OD 영역 */}
-                <div className="relative bg-gray-800 rounded shadow overflow-hidden">
-                    <div className="absolute top-0 w-full px-2 py-1 flex justify-between items-center z-10">
-                        <h2 className="text-xl font-semibold text-white">OD</h2>
-                    </div>
-                    <canvas ref={odCanvasRef} width={640} height={360} className="aspect-[16/9] w-full bg-black" />
-                </div>
-
-                {/* OS 영역 */}
-                <div className="relative bg-gray-800 rounded shadow overflow-hidden">
-                    <div className="absolute top-0 w-full px-2 py-1 flex justify-between items-center z-10">
-                        <h2 className="text-xl font-semibold text-white">OS</h2>
-                    </div>
-                    <canvas ref={osCanvasRef} width={640} height={360} className="aspect-[16/9] w-full bg-black" />
-                </div>
+                <EyeCanvas ref={odCanvasRef} side="OD" />
+                <EyeCanvas ref={osCanvasRef} side="OS" />
             </div>
         </div>
     );

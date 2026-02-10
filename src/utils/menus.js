@@ -17,11 +17,11 @@ const menu = [
         title: "설정",
         link: "/config",
     },
-    // {
-    //     icon: "",
-    //     title: "윤부지름수동측정",
-    //     link: "/limbus_test",
-    // }
+    {
+        icon: "",
+        title: "윤부지름수동측정",
+        link: "/limbus_test",
+    }
     // {
     //     icon: "",
     //     title: "X축 캘리브레이션",

@@ -7,6 +7,7 @@ import DualDetectorFrame from "../components/DualDetectorFrame";
 import DualLiveFrame from "../components/DualLiveFrame";
 import RippleButton from "../components/RippleButton";
 import LiveGraph from "../components/LiveGraph";
+import ActionCard from "../components/ActionCard";
 import { Eye, Activity, NotebookPen } from "lucide-react";
 import MySlider from "../components/MySlider";
 import Popup from "../components/Popup";
@@ -318,73 +319,46 @@ export default function Measure() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                    {/* 환저정보 입력 */}
-                    <button
-                        onClick={() => setUsrInfoPopup(true)}
-                        className="group relative bg-slate-50 dark:bg-slate-900 rounded-3xl p-8 text-center cursor-pointer transition-all duration-300 shadow-[12px_12px_24px_#d1d5db,-12px_-12px_24px_#ffffff] dark:shadow-[12px_12px_24px_#0f172a,-12px_-12px_24px_#1e293b] hover:shadow-[6px_6px_12px_#d1d5db,-6px_-6px_12px_#ffffff] dark:hover:shadow-[6px_6px_12px_#0f172a,-6px_-6px_12px_#1e293b] active:shadow-[inset_6px_6px_12px_#d1d5db,inset_-6px_-6px_12px_#ffffff] dark:active:shadow-[inset_6px_6px_12px_#0f172a,inset_-6px_-6px_12px_#1e293b]"
-                    >
-                        {/* 아이콘 컨테이너 */}
-                        <div className="w-20 h-20 bg-slate-50 dark:bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-6 transition-all duration-300 shadow-[inset_8px_8px_16px_#d1d5db,inset_-8px_-8px_16px_#ffffff] dark:shadow-[inset_8px_8px_16px_#0f172a,inset_-8px_-8px_16px_#1e293b]">
+                    <ActionCard
+                        icon={
                             <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl flex items-center justify-center shadow-[2px_2px_4px_#d1d5db,-2px_-2px_4px_#ffffff] dark:shadow-[2px_2px_4px_#0f172a,-2px_-2px_4px_#1e293b]">
                                 <NotebookPen className="w-6 h-6 text-white" />
                             </div>
-                        </div>
-
-                        {/* 텍스트 */}
-                        <h3 className="text-xl font-semibold text-slate-800 dark:text-white mb-3">정보입력</h3>
-                        <p className="text-slate-600 dark:text-slate-400">환자의 정보입력</p>
-                    </button>
-
-                    {/* 보기 카드 */}
-                    <button
-                        onClick={() => setMode("view")}
-                        className="group relative bg-slate-50 dark:bg-slate-900 rounded-3xl p-8 text-center cursor-pointer transition-all duration-300 shadow-[12px_12px_24px_#d1d5db,-12px_-12px_24px_#ffffff] dark:shadow-[12px_12px_24px_#0f172a,-12px_-12px_24px_#1e293b] hover:shadow-[6px_6px_12px_#d1d5db,-6px_-6px_12px_#ffffff] dark:hover:shadow-[6px_6px_12px_#0f172a,-6px_-6px_12px_#1e293b] active:shadow-[inset_6px_6px_12px_#d1d5db,inset_-6px_-6px_12px_#ffffff] dark:active:shadow-[inset_6px_6px_12px_#0f172a,inset_-6px_-6px_12px_#1e293b]"
-                    >
-                        {/* 아이콘 컨테이너 */}
-                        <div className="w-20 h-20 bg-slate-50 dark:bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-6 transition-all duration-300 shadow-[inset_8px_8px_16px_#d1d5db,inset_-8px_-8px_16px_#ffffff] dark:shadow-[inset_8px_8px_16px_#0f172a,inset_-8px_-8px_16px_#1e293b]">
+                        }
+                        title="정보입력"
+                        description="환자의 정보입력"
+                        onClick={() => setUsrInfoPopup(true)}
+                    />
+                    <ActionCard
+                        icon={
                             <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center shadow-[2px_2px_4px_#d1d5db,-2px_-2px_4px_#ffffff] dark:shadow-[2px_2px_4px_#0f172a,-2px_-2px_4px_#1e293b]">
                                 <Eye className="w-6 h-6 text-white" />
                             </div>
-                        </div>
-
-                        {/* 텍스트 */}
-                        <h3 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">미리보기</h3>
-                        <p className="text-slate-600 dark:text-slate-400 text-lg">카메라와 눈사이 거리측정</p>
-                    </button>
-
-                    {/* 측정 카드 */}
-                    <button
-                        onClick={() => openPupilMode()}
-                        className="group relative bg-slate-50 dark:bg-slate-900 rounded-3xl p-8 text-center cursor-pointer transition-all duration-300 shadow-[12px_12px_24px_#d1d5db,-12px_-12px_24px_#ffffff] dark:shadow-[12px_12px_24px_#0f172a,-12px_-12px_24px_#1e293b] hover:shadow-[6px_6px_12px_#d1d5db,-6px_-6px_12px_#ffffff] dark:hover:shadow-[6px_6px_12px_#0f172a,-6px_-6px_12px_#1e293b] active:shadow-[inset_6px_6px_12px_#d1d5db,inset_-6px_-6px_12px_#ffffff] dark:active:shadow-[inset_6px_6px_12px_#0f172a,inset_-6px_-6px_12px_#1e293b]"
-                    >
-                        {/* 아이콘 컨테이너 */}
-                        <div className="w-20 h-20 bg-slate-50 dark:bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-6 transition-all duration-300 shadow-[inset_8px_8px_16px_#d1d5db,inset_-8px_-8px_16px_#ffffff] dark:shadow-[inset_8px_8px_16px_#0f172a,inset_-8px_-8px_16px_#1e293b]">
+                        }
+                        title="미리보기"
+                        description="카메라와 눈사이 거리측정"
+                        onClick={() => setMode("view")}
+                    />
+                    <ActionCard
+                        icon={
                             <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center shadow-[2px_2px_4px_#d1d5db,-2px_-2px_4px_#ffffff] dark:shadow-[2px_2px_4px_#0f172a,-2px_-2px_4px_#1e293b]">
                                 <Activity className="w-6 h-6 text-white" />
                             </div>
-                        </div>
-
-                        {/* 텍스트 */}
-                        <h3 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">사시측정</h3>
-                        <p className="text-slate-600 dark:text-slate-400 text-lg">실시간 데이터 분석</p>
-                    </button>
-
-                    {/* 저장 카드 */}
-                    <button
-                        onClick={() => videoSave()}
-                        className="group relative bg-slate-50 dark:bg-slate-900 rounded-3xl p-8 text-center cursor-pointer transition-all duration-300 shadow-[12px_12px_24px_#d1d5db,-12px_-12px_24px_#ffffff] dark:shadow-[12px_12px_24px_#0f172a,-12px_-12px_24px_#1e293b] hover:shadow-[6px_6px_12px_#d1d5db,-6px_-6px_12px_#ffffff] dark:hover:shadow-[6px_6px_12px_#0f172a,-6px_-6px_12px_#1e293b] active:shadow-[inset_6px_6px_12px_#d1d5db,inset_-6px_-6px_12px_#ffffff] dark:active:shadow-[inset_6px_6px_12px_#0f172a,inset_-6px_-6px_12px_#1e293b]"
-                    >
-                        {/* 아이콘 컨테이너 */}
-                        <div className="w-20 h-20 bg-slate-50 dark:bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-6 transition-all duration-300 shadow-[inset_8px_8px_16px_#d1d5db,inset_-8px_-8px_16px_#ffffff] dark:shadow-[inset_8px_8px_16px_#0f172a,inset_-8px_-8px_16px_#1e293b]">
+                        }
+                        title="사시측정"
+                        description="실시간 데이터 분석"
+                        onClick={() => openPupilMode()}
+                    />
+                    <ActionCard
+                        icon={
                             <div className="w-12 h-12 bg-gradient-to-br from-red-400 to-red-600 rounded-xl flex items-center justify-center shadow-[2px_2px_4px_#d1d5db,-2px_-2px_4px_#ffffff] dark:shadow-[2px_2px_4px_#0f172a,-2px_-2px_4px_#1e293b]">
                                 <Activity className="w-6 h-6 text-white" />
                             </div>
-                        </div>
-
-                        {/* 텍스트 */}
-                        <h3 className="text-xl font-semibold text-slate-800 dark:text-white mb-3">영상저장</h3>
-                        <p className="text-slate-600 dark:text-slate-400">측정된 영상을 저장</p>
-                    </button>
+                        }
+                        title="영상저장"
+                        description="측정된 영상을 저장"
+                        onClick={() => videoSave()}
+                    />
                 </div>
 
                 {/* dummy */}

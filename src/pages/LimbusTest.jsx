@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import ManualDistanceMeasurement from "../components/ManualDistanceMeasurement";
-import { calcMM } from "../utils/CalcPxToMm";
+import { calcMM } from "../utils/calcPxToMm";
 import { Upload, Info } from "lucide-react";
 import Layout from "../components/Layout";
 

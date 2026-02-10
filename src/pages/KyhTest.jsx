@@ -5,12 +5,12 @@ import RippleButton from "../components/RippleButton";
 import toast from "react-hot-toast";
 import axios from "axios";
 import HorizontalRuler from "../components/HorizontalRuler";
-// import calculator from "../utils/RegressionEyeAngleCalculator";
-import calculator from "../utils/OldRegressionEyeAngleCalculator";
-import EyeWsClient from "../utils/EyeWsClient";
+// import calculator from "../utils/regressionEyeAngleCalculator";
+import calculator from "../utils/oldRegressionEyeAngleCalculator";
+import EyeWsClient from "../utils/eyeWsClient";
 import ManualDistanceMeasurement from "../components/ManualDistanceMeasurement";
 import ManualToggleSwitch from "../components/ManualToggleSwitch";
-import { calcMM } from "../utils/CalcPxToMm";
+import { calcMM } from "../utils/calcPxToMm";
 
 export default function KyhTest() {
     const { IP, DISTANCE, setDistance, LIMBUS_MM } = useVariableStore();

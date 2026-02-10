@@ -7,9 +7,9 @@ import toast from "react-hot-toast";
 import axios from "axios";
 import ManualDistanceMeasurement from "../components/ManualDistanceMeasurement";
 import ManualToggleSwitch from "../components/ManualToggleSwitch";
-import { calcMM } from "../utils/CalcPxToMm";
+import { calcMM } from "../utils/calcPxToMm";
 import XaxisCalibrationTable, { saveCalibrationMeasurement } from "../components/XaxisCalibrationTable";
-import EyeWsClient from "../utils/EyeWsClient";
+import EyeWsClient from "../utils/eyeWsClient";
 
 export default function XaxisCali() {
     const { IP, DISTANCE, setDistance, LIMBUS_MM } = useVariableStore();
