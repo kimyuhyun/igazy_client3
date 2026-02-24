@@ -97,7 +97,7 @@ export default function PatientInfoEditModal({ editingFile, cachedFiles, apiUrl,
             <div className="grid grid-cols-2 gap-4 mt-4">
                 <div className="flex flex-col">
                     <label className="mb-1 font-semibold text-gray-700 dark:text-gray-200">
-                        윤부 지름 (mm)
+                        윤부 지름 (mm) <span className="text-red-500">*</span>
                     </label>
                     <input
                         type="number"
@@ -110,7 +110,7 @@ export default function PatientInfoEditModal({ editingFile, cachedFiles, apiUrl,
                 </div>
                 <div className="flex flex-col">
                     <label className="mb-1 font-semibold text-gray-700 dark:text-gray-200">
-                        윤부 지름 (px)
+                        윤부 지름 (px) <span className="text-red-500">*</span>
                     </label>
                     <input
                         type="number"

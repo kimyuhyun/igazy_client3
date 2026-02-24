@@ -242,7 +242,7 @@ const DualLiveFrame = ({ onClose }) => {
                                         <img
                                             src={angleResultImage}
                                             alt="Angle Measurement"
-                                            className="w-full h-full object-contain"
+                                            className="h-[240px] object-contain"
                                         />
 
 
