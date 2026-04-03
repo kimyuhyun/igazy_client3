@@ -19,19 +19,18 @@ const menu = [
     },
     {
         icon: "",
+        title: "X축 캘리브레이션",
+        link: "/x_axis_cali",
+    },
+    {
+        icon: "",
+        title: "측정 테스트",
+        link: "/kyh_test",
+    },
+    {
+        icon: "",
         title: "윤부지름수동측정",
         link: "/limbus_test",
-    }
-    // {
-    //     icon: "",
-    //     title: "X축 캘리브레이션",
-    //     link: "/x_axis_cali",
-    // },
-
-    // {
-    //     icon: "",
-    //     title: "측정 테스트",
-    //     link: "/kyh_test",
-    // },
+    },
 ];
 export default menu;

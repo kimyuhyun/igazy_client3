@@ -1,11 +1,17 @@
 class EyeWsClient {
     /**
      * @param {string} url - 예: "ws://192.168.1.100:3001"
+     * @param {object} options - { maxRetries: 5, retryDelay: 1000 }
      */
-    constructor(url) {
+    constructor(url, options = {}) {
         this.url = url;
+        this.maxRetries = options.maxRetries ?? 5;
+        this.retryDelay = options.retryDelay ?? 1000;
 
         this.ws = null;
+        this._retryCount = 0;
+        this._retryTimer = null;
+        this._manualClose = false;
 
         // 구독자
         this._anyHandlers = new Set();
@@ -28,6 +34,7 @@ class EyeWsClient {
             return;
         }
 
+        this._manualClose = false;
         this._closed = false;
         this._emitStatus("connecting");
 
@@ -35,19 +42,35 @@ class EyeWsClient {
         this.ws = ws;
 
         ws.onopen = () => {
+            this._retryCount = 0;
             this._emitStatus("connected");
             console.log("WS connected:", this.url);
         };
 
         ws.onerror = (e) => {
-            this._emitStatus("error");
-            this._emitError(e);
+            console.log("WS error:", e);
         };
 
         ws.onclose = () => {
-            this._emitStatus("disconnected");
             console.log("WS closed");
             this._closeStream();
+
+            // 수동 종료가 아니고 재시도 횟수가 남았으면 재연결
+            if (!this._manualClose && this._retryCount < this.maxRetries) {
+                this._retryCount++;
+                this._emitStatus("retrying");
+                console.log(`WS 재연결 시도 ${this._retryCount}/${this.maxRetries} (${this.retryDelay}ms 후)`);
+
+                this._retryTimer = setTimeout(() => {
+                    this._retryTimer = null;
+                    this.connect();
+                }, this.retryDelay);
+            } else if (!this._manualClose) {
+                this._emitStatus("failed");
+                this._emitError(new Error(`WebSocket ${this.maxRetries}회 재연결 실패`));
+            } else {
+                this._emitStatus("disconnected");
+            }
         };
 
         ws.onmessage = (event) => {
@@ -72,10 +95,16 @@ class EyeWsClient {
     }
 
     disconnect() {
+        this._manualClose = true;
+
+        if (this._retryTimer) {
+            clearTimeout(this._retryTimer);
+            this._retryTimer = null;
+        }
+
         if (!this.ws) return;
         this.ws.close();
         this.ws = null;
-        // close 이벤트에서 stream 정리됨
     }
 
     // ---------------------------
@@ -110,10 +139,9 @@ class EyeWsClient {
     // Async Iterator (데이터를 "리턴 받듯" 소비)
     // ---------------------------
     async *stream({ filter = null } = {}) {
-        // filter: (msg)=>boolean
         while (true) {
             const msg = await this._next();
-            if (msg === null) return; // closed
+            if (msg === null) return;
             if (!filter || filter(msg)) yield msg;
         }
     }
@@ -130,7 +158,6 @@ class EyeWsClient {
     // 내부: 큐/대기자 처리
     // ---------------------------
     _push(msg) {
-        // 대기자가 있으면 즉시 전달, 아니면 큐 적재
         const waiter = this._waiters.shift();
         if (waiter) waiter.resolve(msg);
         else this._queue.push(msg);
@@ -138,7 +165,6 @@ class EyeWsClient {
 
     _closeStream() {
         this._closed = true;
-        // 기다리는 애들 모두 종료
         while (this._waiters.length) {
             this._waiters.shift().resolve(null);
         }

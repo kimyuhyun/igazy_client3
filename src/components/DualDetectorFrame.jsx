@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useImperativeHandle, forwardRef } from "react";
+import toast from "react-hot-toast";
 import useVariableStore from "../stores/useVariableStore";
 import EyeWsClient from "../utils/eyeWsClient";
 import { drawBase64ToCanvas } from "../utils/canvasUtils";
@@ -28,6 +29,16 @@ const DualDetectorFrame = forwardRef(({ onEnded, onOdResults, onOsResults }, ref
         wsClientRef.current = wsClient;
 
         wsClient.connect();
+
+        const offStatus = wsClient.onStatus((status) => {
+            if (status === "retrying") {
+                toast.loading("WebSocket 재연결 중...", { id: "ws-status" });
+            } else if (status === "connected") {
+                toast.dismiss("ws-status");
+            } else if (status === "failed") {
+                toast.error("WebSocket 연결 실패", { id: "ws-status" });
+            }
+        });
 
         // Pupil LIVE frame (OD / OS)
         const offLive = wsClient.onLive(({ data }) => {
@@ -60,6 +71,7 @@ const DualDetectorFrame = forwardRef(({ onEnded, onOdResults, onOsResults }, ref
         });
 
         return () => {
+            offStatus();
             offLive();
             wsClient.disconnect();
         };

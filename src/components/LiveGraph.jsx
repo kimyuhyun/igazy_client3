@@ -47,7 +47,10 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
     }, []);
 
     // 커스텀 훅으로 데이터 추출
-    const { odXData, osXData, odYData, osYData, odIsHideData, osIsHideData } = useProcessedEyeData(odResults, osResults);
+    const { odXData, osXData, odYData, osYData, odIsHideData, osIsHideData } = useProcessedEyeData(
+        odResults,
+        osResults,
+    );
 
     // 전처리된 데이터 계산 (isHide 데이터 포함)
     const processedData = useMemo(() => {
@@ -137,13 +140,15 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
         if (!currentFrameRef) return;
 
         const interval = setInterval(() => {
-            setRenderedFrame(currentFrameRef.current);
+            if (currentFrameRef.current !== renderedFrame) {
+                setRenderedFrame(currentFrameRef.current);
+            }
         }, 16);
 
         return () => {
             clearInterval(interval);
         };
-    }, [currentFrameRef]);
+    }, [currentFrameRef, renderedFrame]);
 
     const getPointConfig = (dataArray, axis, eye, color = "blue") => {
         const indices = highlightIndices[axis][eye];

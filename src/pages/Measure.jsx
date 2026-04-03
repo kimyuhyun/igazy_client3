@@ -35,6 +35,7 @@ export default function Measure() {
     const API_URL = `http://${IP}:8080`;
 
     const [mode, setMode] = useState("stop");
+    const [streamReady, setStreamReady] = useState(false);
     const [componentKey, setComponentKey] = useState(0); // 키 상태 추가
 
     const [odResults, setOdResults] = useState([]);
@@ -255,6 +256,7 @@ export default function Measure() {
     const handleLiveStream = async () => {
         try {
             setLoading(true);
+            setStreamReady(false);
             setComponentKey((prev) => prev + 1);
 
             const { data } = await axios({
@@ -266,6 +268,7 @@ export default function Measure() {
                 timeout: 1000,
             });
             console.log(data);
+            setStreamReady(true);
         } catch (error) {
             toast.error(error.message);
             setMode("stop");
@@ -277,6 +280,7 @@ export default function Measure() {
     const handlePupilStream = async () => {
         try {
             setLoading(true);
+            setStreamReady(false);
             setComponentKey((prev) => prev + 1);
 
             const { data } = await axios({
@@ -288,6 +292,7 @@ export default function Measure() {
                 timeout: 1000,
             });
             console.log(data);
+            setStreamReady(true);
         } catch (error) {
             toast.error(error.message);
             setMode("stop");
@@ -365,11 +370,11 @@ export default function Measure() {
                 <div className="grid grid-cols-1 gap-8"></div>
             </div>
 
-            {mode === "view" && (
+            {mode === "view" && streamReady && (
                 <DualLiveFrame key={`view-${componentKey}`} onClose={handleCloseViewMode} />
             )}
 
-            {mode === "pupil" && (
+            {mode === "pupil" && streamReady && (
                 <VideoPopup onClose={handleClosePupilMode}>
                     <DualDetectorFrame
                         key={`view-${componentKey}`}

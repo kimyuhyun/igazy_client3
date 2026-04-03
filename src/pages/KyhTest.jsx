@@ -13,16 +13,12 @@ import ManualToggleSwitch from "../components/ManualToggleSwitch";
 import { calcMM } from "../utils/calcPxToMm";
 
 export default function KyhTest() {
-    const { IP, DISTANCE, setDistance, LIMBUS_MM } = useVariableStore();
+    const { IP, DISTANCE, LIMBUS_MM, LIMBUS_PX, setDistance, setLimbusPX, FRAME_HEIGHT } = useVariableStore();
 
     const API_URL = `http://${IP}:8080`;
-    const SOCKET_URL = `wss://${IP}:3000`;
+    const SOCKET_URL = `ws://${IP}:3000`;
 
     const wsClientRef = useRef(null);
-    if (!wsClientRef.current) {
-        wsClientRef.current = new EyeWsClient(SOCKET_URL);
-    }
-    const wsClient = wsClientRef.current;
 
     const [showManualMode, setShowManualMode] = useState(false);
     const [isStreaming, setStreaming] = useState(false);
@@ -63,6 +59,7 @@ export default function KyhTest() {
             const limbusPxDiameter = data.pxDiameter;
             const distanceMM = calcMM(limbusRealMM, limbusPxDiameter);
 
+            setLimbusPX(limbusPxDiameter);
             setDistance(Number(distanceMM.toFixed(0)));
             setResultImage(`data:image/jpeg;base64,${data.frameBase64}`);
         } catch (error) {
@@ -109,7 +106,7 @@ export default function KyhTest() {
     const startStreaming = async () => {
         if (isStreaming) return;
 
-        const { data } = await axios({
+        await axios({
             url: `${API_URL}/api/live`,
             method: "GET",
             headers: {
@@ -118,7 +115,10 @@ export default function KyhTest() {
             timeout: 5000,
         });
 
+        const wsClient = new EyeWsClient(SOCKET_URL);
+        wsClientRef.current = wsClient;
         wsClient.connect();
+
         liveUnsubscribeRef.current = wsClient.onLive(({ data }) => {
             const { frameBase64, eye } = data;
             if (eye === "OD") {
@@ -142,7 +142,8 @@ export default function KyhTest() {
         liveUnsubscribeRef.current?.();
         liveUnsubscribeRef.current = null;
 
-        wsClient.disconnect();
+        wsClientRef.current?.disconnect();
+        wsClientRef.current = null;
 
         setResultImage(null);
         setConnectionStatus("disconnected");
@@ -232,13 +233,29 @@ export default function KyhTest() {
                                 {getStatusBadge(connectionStatus).text}
                             </span>
                         </div>
-                        <canvas ref={canvasRef} className="aspect-[16/9] w-full bg-black" width={640} height={360} />
+                        <canvas ref={canvasRef} className="w-full bg-black" width={640} height={FRAME_HEIGHT} />
                     </div>
 
-                    {/* 거리 자 */}
-                    <div className="relative bg-gray-800 rounded shadow overflow-hidden">
-                        <div className="absolute inset-0">
-                            <HorizontalRuler mm={DISTANCE} />
+                    {/* 거리 자 + 윤부 정보 */}
+                    <div className="flex flex-col gap-2">
+                        <div className="relative bg-gray-800 rounded shadow overflow-hidden" style={{ height: '200px' }}>
+                            <div className="absolute inset-0">
+                                <HorizontalRuler mm={DISTANCE} />
+                            </div>
+                        </div>
+                        <div className="bg-gray-800 rounded p-3 text-white text-sm space-y-1">
+                            <div className="flex justify-between">
+                                <span className="text-gray-400">윤부 지름 (mm)</span>
+                                <span className="font-mono">{LIMBUS_MM || "-"}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-400">윤부 지름 (px)</span>
+                                <span className="font-mono">{LIMBUS_PX ? parseFloat(LIMBUS_PX).toFixed(1) : "-"}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-400">거리 (mm)</span>
+                                <span className="font-mono">{DISTANCE || "-"}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -251,7 +268,7 @@ export default function KyhTest() {
                             <img
                                 src={resultImage}
                                 alt="Distance Measurement Result"
-                                className="aspect-[16/9] w-full h-full object-contain"
+                                className="w-full h-full object-contain"
                             />
                         )}
 
@@ -259,6 +276,7 @@ export default function KyhTest() {
                             <ManualDistanceMeasurement
                                 imageSource={resultImage}
                                 onMeasurementComplete={(limbusPxDiameter) => {
+                                    setLimbusPX(limbusPxDiameter);
                                     const distanceMM = calcMM(LIMBUS_MM, limbusPxDiameter);
                                     setDistance(Number(distanceMM.toFixed(0)));
                                 }}

@@ -15,9 +15,9 @@ export default function XaxisCali() {
     const { IP, DISTANCE, setDistance, LIMBUS_MM } = useVariableStore();
 
     const API_URL = `http://${IP}:8080`;
-    const SOCKET_URL = `wss://${IP}:3000`;
+    const SOCKET_URL = `ws://${IP}:3000`;
 
-    const wsClient = new EyeWsClient(SOCKET_URL);
+    const wsClientRef = useRef(null);
     const [isStreaming, setStreaming] = useState(false);
     const liveUnsubscribeRef = useRef(null);
 
@@ -74,7 +74,8 @@ export default function XaxisCali() {
                 },
             });
 
-            const limbusRealMM = LIMBUS_MM;
+            // 여기서는 하드 코딩 안구모형의 윤부지름음 13.81mm을 사용
+            const limbusRealMM = 13.81;
             const limbusPxDiameter = data.pxDiameter;
             const distanceMM = calcMM(limbusRealMM, limbusPxDiameter);
 
@@ -229,7 +230,7 @@ export default function XaxisCali() {
             return;
         }
 
-        const { data } = await axios({
+        await axios({
             url: `${API_URL}/api/live`,
             method: "GET",
             headers: {
@@ -238,7 +239,10 @@ export default function XaxisCali() {
             timeout: 5000,
         });
 
+        const wsClient = new EyeWsClient(SOCKET_URL);
+        wsClientRef.current = wsClient;
         wsClient.connect();
+
         liveUnsubscribeRef.current = wsClient.onLive(({ data }) => {
             const { frameBase64, eye } = data;
             if (eye === "OD") {
@@ -269,7 +273,8 @@ export default function XaxisCali() {
         liveUnsubscribeRef.current?.(); // LIVE 구독 해제
         liveUnsubscribeRef.current = null;
 
-        wsClient.disconnect();
+        wsClientRef.current?.disconnect();
+        wsClientRef.current = null;
 
         setConnectionStatus("disconnected");
         setStreaming(false);
@@ -343,7 +348,7 @@ export default function XaxisCali() {
                                 </span>
                             )}
                         </div>
-                        <canvas ref={canvasRef} className="aspect-[16/9] w-full bg-black" />
+                        <canvas ref={canvasRef} className="w-full bg-black" />
                     </div>
                     <div>
                         <HorizontalRuler mm={DISTANCE} />
@@ -354,7 +359,7 @@ export default function XaxisCali() {
                             <img
                                 src={resultImage}
                                 alt="Distance Measurement Result"
-                                className="aspect-[16/9] w-full h-full object-contain"
+                                className="w-full h-full object-contain"
                             />
                         )}
 
@@ -383,7 +388,7 @@ export default function XaxisCali() {
                             <img
                                 src={resultImage2}
                                 alt="Distance Measurement Result"
-                                className="aspect-[16/9] w-full bg-black"
+                                className="w-full bg-black"
                             />
                         )}
                     </div>

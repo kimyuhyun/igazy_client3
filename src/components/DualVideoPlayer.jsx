@@ -1,10 +1,11 @@
 // components/DualVideoPlayer.jsx
 import { useEffect, useState } from "react";
+import useVariableStore from "../stores/useVariableStore";
 
 export default function DualVideoPlayer({ videoData }) {
     const [currentFrame, setCurrentFrame] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
-
+    const { FRAME_HEIGHT } = useVariableStore();
     // 영상 재생
     useEffect(() => {
         if (!isPlaying || !videoData) return;
@@ -32,7 +33,7 @@ export default function DualVideoPlayer({ videoData }) {
             {/* 이미지 뷰어 */}
             <div className="grid grid-cols-2 gap-2 mb-2">
                 {/* OD 이미지 */}
-                <div className="relative bg-gray-800 rounded shadow overflow-hidden aspect-[16/9]">
+                <div className="relative bg-gray-800 rounded shadow overflow-hidden">
                     <div className="absolute top-0 w-full px-2 py-1 flex justify-between items-center z-10">
                         <h2 className="text-xl font-semibold text-white">OD</h2>
                     </div>
@@ -42,13 +43,13 @@ export default function DualVideoPlayer({ videoData }) {
                             alt={`OD Frame ${currentFrame}`}
                             className="w-full bg-black"
                             width={640}
-                            height={360}
+                            height={FRAME_HEIGHT}
                         />
                     )}
                 </div>
 
                 {/* OS 이미지 */}
-                <div className="relative bg-gray-800 rounded shadow overflow-hidden aspect-[16/9]">
+                <div className="relative bg-gray-800 rounded shadow overflow-hidden">
                     <div className="absolute top-0 w-full px-2 py-1 flex justify-between items-center z-10">
                         <h2 className="text-xl font-semibold text-white">OS</h2>
                     </div>
@@ -58,7 +59,7 @@ export default function DualVideoPlayer({ videoData }) {
                             alt={`OS Frame ${currentFrame}`}
                             className="w-full bg-black"
                             width={640}
-                            height={360}
+                            height={FRAME_HEIGHT}
                         />
                     )}
                 </div>

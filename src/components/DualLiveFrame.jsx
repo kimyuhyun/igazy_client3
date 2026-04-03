@@ -15,7 +15,7 @@ import { drawBase64ToCanvas } from "../utils/canvasUtils";
 import EyeCanvas from "./EyeCanvas";
 
 const DualLiveFrame = ({ onClose }) => {
-    const { IP, LIMBUS_MM, DISTANCE, ANGLE, setAngle, setDistance, setLimbusPX } =
+    const { IP, LIMBUS_MM, DISTANCE, ANGLE, setAngle, setDistance, setLimbusPX, FRAME_HEIGHT } =
         useVariableStore();
 
     const API_URL = `http://${IP}:8080`;
@@ -110,6 +110,16 @@ const DualLiveFrame = ({ onClose }) => {
         wsClientRef.current = wsClient;
         wsClient.connect();
 
+        const offStatus = wsClient.onStatus((status) => {
+            if (status === "retrying") {
+                toast.loading("WebSocket 재연결 중...", { id: "ws-status" });
+            } else if (status === "connected") {
+                toast.dismiss("ws-status");
+            } else if (status === "failed") {
+                toast.error("WebSocket 연결 실패", { id: "ws-status" });
+            }
+        });
+
         const offLive = wsClient.onLive(({ data }) => {
             const { frameBase64, eye } = data;
 
@@ -125,6 +135,7 @@ const DualLiveFrame = ({ onClose }) => {
         });
 
         return () => {
+            offStatus();
             offLive();
             wsClient.disconnect();
         };
@@ -204,7 +215,7 @@ const DualLiveFrame = ({ onClose }) => {
                             <div className="flex flex-row justify-center col-span-2">
 
                                 <div className="flex flex-col">
-                                    <div className="relative" style={{ width: '640px', height: '360px' }}>
+                                    <div className="relative" style={{ width: '640px', height: `${FRAME_HEIGHT}px` }}>
                                         {!showManualMode ? (
                                             <img
                                                 src={distanceResultImage}

@@ -40,9 +40,9 @@ export const createChartOptionsX = ({ renderedFrame, actualMaxFrame, processedDa
             },
         },
         y: {
-            min: -90,
-            max: 90,
-            ticks: { stepSize: 10 },
+            min: -10,
+            max: 10,
+            ticks: { stepSize: 1 },
             grid: {
                 color: "rgba(0,0,0,0.2)",
             },
@@ -95,9 +95,9 @@ export const createChartOptionsY = ({ renderedFrame, actualMaxFrame, processedDa
             },
         },
         y: {
-            min: -90,
-            max: 90,
-            ticks: { stepSize: 10 },
+            min: -6,
+            max: 6,
+            ticks: { stepSize: 1 },
             grid: {
                 color: "rgba(0,0,0,0.2)",
             },

@@ -1,8 +1,10 @@
 // components/ManualDistanceMeasurement.jsx
 import React, { useRef, useEffect, useState } from "react";
 import { X, Check, RotateCcw } from "lucide-react";
+import useVariableStore from "../stores/useVariableStore";
 
 const ManualDistanceMeasurement = React.memo(({ imageSource, onMeasurementComplete }) => {
+    const { FRAME_HEIGHT } = useVariableStore();
     const canvasRef = useRef(null);
     const [points, setPoints] = useState([]);
     const [imageLoaded, setImageLoaded] = useState(false);
@@ -178,7 +180,7 @@ const ManualDistanceMeasurement = React.memo(({ imageSource, onMeasurementComple
             <canvas
                 ref={canvasRef}
                 width={640}
-                height={360}
+                height={FRAME_HEIGHT}
                 className={`bg-black ${points.length < 2 ? "cursor-none" : "cursor-default"}`}
                 onClick={handleCanvasClick}
                 onMouseMove={handleMouseMove}

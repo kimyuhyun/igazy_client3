@@ -1,5 +1,5 @@
 // pages/Videos.jsx
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import Layout from "../components/Layout";
 import toast from "react-hot-toast";
 import Table from "../components/Table";
@@ -26,7 +26,7 @@ import {
     clearAllCache,
 } from "../utils/indexedDB";
 import { transformFileData } from "../utils/transformFileData";
-import { Database, Trash2, Edit2 } from "lucide-react";
+import { Database, Trash2, Edit2, Search } from "lucide-react";
 import RippleButton from "../components/RippleButton";
 
 export default function Video() {
@@ -43,12 +43,28 @@ export default function Video() {
     const [cachedFiles, setCachedFiles] = useState(new Set());
     const [selectedFiles, setSelectedFiles] = useState(new Set());
 
+    // 검색 필터
+    const [searchYear, setSearchYear] = useState("");
+    const [searchMonth, setSearchMonth] = useState("");
+    const [searchNum, setSearchNum] = useState("");
+    const [searchName, setSearchName] = useState("");
+
+    const filteredVids = useMemo(() => {
+        return vids.filter((row) => {
+            if (searchYear && !row.date?.startsWith(searchYear)) return false;
+            if (searchMonth && row.date?.split("-")[1] !== searchMonth) return false;
+            if (searchNum && !row.num?.includes(searchNum)) return false;
+            if (searchName && !row.name1?.includes(searchName)) return false;
+            return true;
+        });
+    }, [vids, searchYear, searchMonth, searchNum, searchName]);
+
     // 환자 정보 수정 관련 state
     const [editingFile, setEditingFile] = useState(null);
 
     const playerRef = useRef(null);
-    const intervalRef = useRef(null);
     const currentFrameRef = useRef(0);
+    const isLoadingRef = useRef(false);
 
     const [odImages, setOdImages] = useState([]);
     const [osImages, setOsImages] = useState([]);
@@ -138,21 +154,22 @@ export default function Video() {
         updateStorageInfo();
         updateCachedFilesList();
 
-        // Cleanup: 컴포넌트 언마운트 시 interval 정리
+        // Cleanup: 컴포넌트 언마운트 시 정리
         return () => {
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-                intervalRef.current = null;
+            if (rafRef.current) {
+                cancelAnimationFrame(rafRef.current);
+                rafRef.current = null;
             }
         };
     }, [fetchData, updateStorageInfo, updateCachedFilesList]);
 
     async function handleVideoClick(filePath, fileName) {
-        if (!filePath) {
+        if (!filePath || isLoadingRef.current) {
             return;
         }
 
         try {
+            isLoadingRef.current = true;
             setLoading(true);
 
             // 1. IndexedDB에서 먼저 확인
@@ -333,6 +350,7 @@ export default function Video() {
             console.error("Failed to load video:", error);
             toast.error("영상을 불러오는데 실패했습니다", { id: "error" });
         } finally {
+            isLoadingRef.current = false;
             setLoading(false);
         }
     }
@@ -488,10 +506,10 @@ export default function Video() {
     };
 
     // DualImagePlayer에서 호출되는 콜백 함수
-    const handleFrameChange = (frame, totalFrames) => {
+    const handleFrameChange = useCallback((frame, totalFrames) => {
         currentFrameRef.current = frame;
         setMaxFrame(totalFrames);
-    };
+    }, []);
 
     // 슬라이더나 버튼에서 프레임 변경
     const handleSliderFrameChange = (frameNumber) => {
@@ -506,42 +524,60 @@ export default function Video() {
         }
     };
 
+    const rafRef = useRef(null);
+    const lastTimeRef = useRef(0);
+    const PLAYBACK_FPS = 60; // 재생 속도 (프레임/초)
+
     const togglePlay = () => {
         if (isPlaying) {
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-                intervalRef.current = null;
+            if (rafRef.current) {
+                cancelAnimationFrame(rafRef.current);
+                rafRef.current = null;
             }
             setIsPlaying(false);
         } else {
             if (maxFrame === 0) return;
 
-            intervalRef.current = setInterval(() => {
-                const nextFrame = currentFrameRef.current + 1;
-                if (nextFrame >= maxFrame) {
-                    if (intervalRef.current) {
-                        clearInterval(intervalRef.current);
-                        intervalRef.current = null;
+            lastTimeRef.current = 0;
+            const msPerFrame = 1000 / PLAYBACK_FPS;
+
+            const animate = (timestamp) => {
+                if (!lastTimeRef.current) lastTimeRef.current = timestamp;
+                const elapsed = timestamp - lastTimeRef.current;
+                const framesToAdvance = Math.floor(elapsed / msPerFrame);
+
+                if (framesToAdvance > 0) {
+                    lastTimeRef.current = timestamp;
+                    const nextFrame = currentFrameRef.current + framesToAdvance;
+
+                    if (nextFrame >= maxFrame) {
+                        currentFrameRef.current = maxFrame - 1;
+                        if (playerRef.current?.setFrame) {
+                            playerRef.current.setFrame(maxFrame - 1);
+                        }
+                        rafRef.current = null;
+                        setIsPlaying(false);
+                        return;
                     }
-                    setIsPlaying(false);
-                    currentFrameRef.current = maxFrame - 1;
-                } else {
+
                     currentFrameRef.current = nextFrame;
-                    // DualImagePlayer에게 프레임 변경 알림
-                    if (playerRef.current && playerRef.current.setFrame) {
+                    if (playerRef.current?.setFrame) {
                         playerRef.current.setFrame(nextFrame);
                     }
                 }
-            }, 33);
 
+                rafRef.current = requestAnimationFrame(animate);
+            };
+
+            rafRef.current = requestAnimationFrame(animate);
             setIsPlaying(true);
         }
     };
 
     const handleClose = () => {
-        if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
+        if (rafRef.current) {
+            cancelAnimationFrame(rafRef.current);
+            rafRef.current = null;
         }
         setIsPlaying(false);
         currentFrameRef.current = 0;
@@ -594,16 +630,56 @@ export default function Video() {
                 </div>
             )}
 
+            {/* 검색 필터 */}
+            <div className="mb-4 flex items-center gap-2 flex-wrap">
+                <Search className="w-4 h-4 text-gray-500" />
+                <select
+                    value={searchYear}
+                    onChange={(e) => setSearchYear(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-1.5 text-sm w-24"
+                >
+                    <option value="">년도</option>
+                    {[...new Set(vids.map((v) => v.date?.split("-")[0]).filter(Boolean))].sort().reverse().map((y) => (
+                        <option key={y} value={y}>{y}</option>
+                    ))}
+                </select>
+                <select
+                    value={searchMonth}
+                    onChange={(e) => setSearchMonth(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-1.5 text-sm w-20"
+                >
+                    <option value="">월</option>
+                    {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")).map((m) => (
+                        <option key={m} value={m}>{m}</option>
+                    ))}
+                </select>
+                <input
+                    type="text"
+                    placeholder="환자번호"
+                    value={searchNum}
+                    onChange={(e) => setSearchNum(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-1.5 text-sm w-28"
+                />
+                <input
+                    type="text"
+                    placeholder="이름"
+                    value={searchName}
+                    onChange={(e) => setSearchName(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-1.5 text-sm w-28"
+                />
+                {(searchYear || searchMonth || searchNum || searchName) && (
+                    <button
+                        onClick={() => { setSearchYear(""); setSearchMonth(""); setSearchNum(""); setSearchName(""); }}
+                        className="text-sm text-gray-500 hover:text-gray-700 px-2 py-1"
+                    >
+                        초기화
+                    </button>
+                )}
+                <span className="text-sm text-gray-500 ml-auto">{filteredVids.length} / {vids.length}건</span>
+            </div>
+
             <Table>
                 <Table.Header>
-                    {/* <Table.Head className="w-[40px]">
-                        <input
-                            type="checkbox"
-                            checked={vids.length > 0 && selectedFiles.size === vids.length}
-                            onChange={handleSelectAll}
-                            className="size-4 cursor-pointer mt-1"
-                        />
-                    </Table.Head> */}
                     <Table.Head className="w-[50px]">No.</Table.Head>
                     <Table.Head className="w-[120px]">번호</Table.Head>
                     <Table.Head>성명</Table.Head>
@@ -614,7 +690,7 @@ export default function Video() {
                     <Table.Head className="w-[80px]">수정</Table.Head>
                 </Table.Header>
                 <Table.Body>
-                    {vids.map((row, i) => (
+                    {filteredVids.map((row, i) => (
                         <Table.Row key={i} index={i}>
                             {/* <Table.Cell>
                                 <input
@@ -702,11 +778,13 @@ export default function Video() {
                     </div>
 
                     <div className="flex flex-row my-4">
-                        <div className="w-5" />
+                        {/* <div className="w-5" /> */}
                         <MySlider
                             max_frame={maxFrame}
                             currentFrameRef={currentFrameRef} // ref 사용
                             onCurrent={handleSliderFrameChange}
+                            isPlaying={isPlaying}
+                            onTogglePlay={togglePlay}
                         />
                     </div>
 

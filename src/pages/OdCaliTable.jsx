@@ -13,7 +13,7 @@ import CalibrationTable from "../components/CalibrationTable";
  */
 
 export default function OdCaliTable() {
-    const { IP, DISTANCE, setDistance } = useVariableStore();
+    const { IP, DISTANCE, setDistance, FRAME_HEIGHT } = useVariableStore();
 
     const urls = {
         OD: `http://${IP}:8081/1/stream`,
@@ -308,7 +308,7 @@ export default function OdCaliTable() {
                                 </span>
                             )}
                         </div>
-                        <canvas ref={canvasRef} className="aspect-[16/9] w-full bg-black" width={640} height={360} />
+                        <canvas ref={canvasRef} className="w-full bg-black" width={640} height={FRAME_HEIGHT} />
                     </div>
 
                     <div className="relative bg-gray-800 rounded shadow overflow-hidden">
@@ -334,9 +334,9 @@ export default function OdCaliTable() {
                             <img
                                 src={resultImage}
                                 alt="Distance Measurement Result"
-                                className="aspect-[16/9] w-full bg-black"
+                                className="w-full bg-black"
                                 width={640}
-                                height={360}
+                                height={FRAME_HEIGHT}
                             />
                         )}
                     </div>
@@ -345,9 +345,9 @@ export default function OdCaliTable() {
                             <img
                                 src={resultImage2}
                                 alt="Distance Measurement Result"
-                                className="aspect-[16/9] w-full bg-black"
+                                className="w-full bg-black"
                                 width={640}
-                                height={360}
+                                height={FRAME_HEIGHT}
                             />
                         )}
                         <div className="bg-white p-1 absolute top-0 left-0">{trakingArr[trakingArr.length - 1]}</div>

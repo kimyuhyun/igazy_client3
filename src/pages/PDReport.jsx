@@ -25,7 +25,7 @@ export default function PDReport() {
 
     const [data, setData] = useState([]);
 
-    const [newDistance, setNewDistance] = useState("");
+    const [newDistance, setNewDistance] = useState(null);
 
     // limbus_mm 수정용 state
     const [editLimbusMM, setEditLimbusMM] = useState(limbusMM);
@@ -104,31 +104,34 @@ export default function PDReport() {
                     yaxis_os_5th = [src5th.osY, dst5th.osY];
                 }
 
+                const distance = calcMM(parseFloat(limbusMM), parseFloat(limbusPX));
+                setNewDistance(distance);
+
                 const obj = {
-                    xaxis_od_1st: calculatePD(xaxis_od_1st, "x", "OD"),
-                    xaxis_os_1st: calculatePD(xaxis_os_1st, "x", "OS"),
-                    yaxis_od_1st: calculatePD(yaxis_od_1st, "y", "OD"),
-                    yaxis_os_1st: calculatePD(yaxis_os_1st, "y", "OS"),
+                    xaxis_od_1st: calculatePD(xaxis_od_1st, "x", "OD", distance),
+                    xaxis_os_1st: calculatePD(xaxis_os_1st, "x", "OS", distance),
+                    yaxis_od_1st: calculatePD(yaxis_od_1st, "y", "OD", distance),
+                    yaxis_os_1st: calculatePD(yaxis_os_1st, "y", "OS", distance),
 
-                    xaxis_od_2nd: calculatePD(xaxis_od_2nd, "x", "OD"),
-                    xaxis_os_2nd: calculatePD(xaxis_os_2nd, "x", "OS"),
-                    yaxis_od_2nd: calculatePD(yaxis_od_2nd, "y", "OD"),
-                    yaxis_os_2nd: calculatePD(yaxis_os_2nd, "y", "OS"),
+                    xaxis_od_2nd: calculatePD(xaxis_od_2nd, "x", "OD", distance),
+                    xaxis_os_2nd: calculatePD(xaxis_os_2nd, "x", "OS", distance),
+                    yaxis_od_2nd: calculatePD(yaxis_od_2nd, "y", "OD", distance),
+                    yaxis_os_2nd: calculatePD(yaxis_os_2nd, "y", "OS", distance),
 
-                    xaxis_od_3rd: calculatePD(xaxis_od_3rd, "x", "OD"),
-                    xaxis_os_3rd: calculatePD(xaxis_os_3rd, "x", "OS"),
-                    yaxis_od_3rd: calculatePD(yaxis_od_3rd, "y", "OD"),
-                    yaxis_os_3rd: calculatePD(yaxis_os_3rd, "y", "OS"),
+                    xaxis_od_3rd: calculatePD(xaxis_od_3rd, "x", "OD", distance),
+                    xaxis_os_3rd: calculatePD(xaxis_os_3rd, "x", "OS", distance),
+                    yaxis_od_3rd: calculatePD(yaxis_od_3rd, "y", "OD", distance),
+                    yaxis_os_3rd: calculatePD(yaxis_os_3rd, "y", "OS", distance),
 
-                    xaxis_od_4th: calculatePD(xaxis_od_4th, "x", "OD"),
-                    xaxis_os_4th: calculatePD(xaxis_os_4th, "x", "OS"),
-                    yaxis_od_4th: calculatePD(yaxis_od_4th, "y", "OD"),
-                    yaxis_os_4th: calculatePD(yaxis_os_4th, "y", "OS"),
+                    xaxis_od_4th: calculatePD(xaxis_od_4th, "x", "OD", distance),
+                    xaxis_os_4th: calculatePD(xaxis_os_4th, "x", "OS", distance),
+                    yaxis_od_4th: calculatePD(yaxis_od_4th, "y", "OD", distance),
+                    yaxis_os_4th: calculatePD(yaxis_os_4th, "y", "OS", distance),
 
-                    xaxis_od_5th: calculatePD(xaxis_od_5th, "x", "OD"),
-                    xaxis_os_5th: calculatePD(xaxis_os_5th, "x", "OS"),
-                    yaxis_od_5th: calculatePD(yaxis_od_5th, "y", "OD"),
-                    yaxis_os_5th: calculatePD(yaxis_os_5th, "y", "OS"),
+                    xaxis_od_5th: calculatePD_5th_only(xaxis_od_5th, "x", "OD", distance),
+                    xaxis_os_5th: calculatePD_5th_only(xaxis_os_5th, "x", "OS", distance),
+                    yaxis_od_5th: calculatePD_5th_only(yaxis_od_5th, "y", "OD", distance),
+                    yaxis_os_5th: calculatePD_5th_only(yaxis_os_5th, "y", "OS", distance),
                 };
                 setData(obj);
             }
@@ -140,11 +143,35 @@ export default function PDReport() {
         setEditLimbusMM(limbusMM);
     }, [limbusMM]);
 
-    const calculatePD = (points, axis, side) => {
+    const calculatePD = (points, axis, side, distance) => {
+        if (!points || points.length < 2 || points[0] == null || points[1] == null) {
+            return "";
+        }
+
+        // points는 mm 단위 → 모델 입력은 px 단위이므로 역변환
+        const scale = parseFloat(limbusMM) / parseFloat(limbusPX); // mm/px
+        const differenceMM = points[0] - points[1];
+        const differencePX = scale > 0 ? differenceMM / scale : differenceMM;
+
+        const degrees = calculator.calculateEyeAngle(parseFloat(angle), parseInt(distance), Math.abs(differencePX));
+
+        if (Number.isNaN(degrees)) {
+            return "";
+        }
+
+        const radians = degrees * (Math.PI / 180);
+        const pdValue = Math.tan(radians) * 100;
+
+        const direction = axis === "x"
+            ? (side === "OD" ? (differenceMM > 0 ? "ESO" : "EXO") : (differenceMM > 0 ? "ESO" : "EXO"))
+            : (differenceMM > 0 ? "HYPO" : "HYPER");
+
+        return `${degrees.toFixed(1)}° / ${pdValue.toFixed(1)} ${direction}`;
+    };
+
+    const calculatePD_5th_only = (points, axis, side, distance) => {
         const difference = points[0] - points[1];
 
-        const distance = calcMM(parseFloat(limbusMM), parseFloat(limbusPX));
-        setNewDistance(distance);
         const degrees = calculator.calculateEyeAngle(parseFloat(angle), parseInt(distance), Math.abs(difference));
 
         if (Number.isNaN(degrees)) {
@@ -156,7 +183,11 @@ export default function PDReport() {
 
         let direction = "";
         if (axis === "x") {
-            direction = difference > 0 ? "ESO" : "EXO";
+            if (side === "OD") {
+                direction = difference > 0 ? "EXO" : "ESO";
+            } else {
+                direction = difference > 0 ? "EXO" : "ESO";
+            }
         } else {
             direction = difference > 0 ? "HYPO" : "HYPER";
         }
@@ -239,22 +270,44 @@ export default function PDReport() {
                                 </td>
                             </tr>
                             <tr>
-                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">Patient Number</th>
-                                <td className="text-sm border border-gray-300 py-2 px-4 text-gray-900 font-medium">{patientNum || "-"}</td>
-                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">Patient Name</th>
-                                <td className="text-sm border border-gray-300 py-2 px-4 text-gray-900 font-medium">{patientName || "-"}</td>
+                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">
+                                    Patient Number
+                                </th>
+                                <td className="text-sm border border-gray-300 py-2 px-4 text-gray-900 font-medium">
+                                    {patientNum || "-"}
+                                </td>
+                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">
+                                    Patient Name
+                                </th>
+                                <td className="text-sm border border-gray-300 py-2 px-4 text-gray-900 font-medium">
+                                    {patientName || "-"}
+                                </td>
                             </tr>
                             <tr>
-                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">Distance</th>
+                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">
+                                    Distance
+                                </th>
                                 <td className="text-sm border border-gray-300 py-2 px-4 text-gray-900 font-medium">{`${newDistance ? `${parseFloat(newDistance).toFixed(1)}mm` : "-"}`}</td>
-                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">Angle</th>
-                                <td className="text-sm border border-gray-300 py-2 px-4 text-gray-900 font-medium">{`${angle}°` || "-"}</td>
+                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">
+                                    Angle
+                                </th>
+                                <td className="text-sm border border-gray-300 py-2 px-4 text-gray-900 font-medium">
+                                    {`${angle}°` || "-"}
+                                </td>
                             </tr>
                             <tr>
-                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">White to White</th>
-                                <td className="text-sm border border-gray-300 py-2 px-4 text-gray-900 font-medium">{`${limbusMM}mm` || "-"}</td>
-                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">White to White(px)</th>
-                                <td className="text-sm border border-gray-300 py-2 px-4 text-gray-900 font-medium">{limbusPX ? `${parseFloat(limbusPX).toFixed(1)}px` : "-"}</td>
+                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">
+                                    White to White
+                                </th>
+                                <td className="text-sm border border-gray-300 py-2 px-4 text-gray-900 font-medium">
+                                    {`${limbusMM}mm` || "-"}
+                                </td>
+                                <th className="text-sm border bg-gray-100 border-gray-300 py-2 px-4 font-medium text-gray-800 text-left w-1/4">
+                                    White to White(px)
+                                </th>
+                                <td className="text-sm border border-gray-300 py-2 px-4 text-gray-900 font-medium">
+                                    {limbusPX ? `${parseFloat(limbusPX).toFixed(1)}px` : "-"}
+                                </td>
                             </tr>
                         </tbody>
                     </table>
