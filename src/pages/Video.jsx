@@ -592,43 +592,40 @@ export default function Video() {
     return (
         <Layout>
             {/* 저장 공간 정보 */}
-            {storageInfo && (
-                <div className="mb-4 p-4 bg-blue-50 rounded-lg">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm">
-                            <Database className="w-4 h-4" />
-                            <span>
-                                캐시 사용량: {(storageInfo.usage / 1024 / 1024).toFixed(1)} MB /{" "}
-                                {(storageInfo.quota / 1024 / 1024 / 1024).toFixed(1)} GB
-                            </span>
+
+            <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm">
+                        <Database className="w-4 h-4" />
+                        <span>
+                            캐시 사용량: {" "}
+                            {storageInfo && (
+                                <>
+                                    {(storageInfo.usage / 1024 / 1024).toFixed(1)} MB /{" "}
+                                    {(storageInfo.quota / 1024 / 1024 / 1024).toFixed(1)} GB
+                                </>
+                            )}
+                        </span>
+                        {storageInfo && (
                             <span className="text-gray-500">
                                 (DB: {(storageInfo.dbSize / 1024 / 1024).toFixed(1)} MB)
                             </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {cachedFiles.size > 0 && (
-                                <button
-                                    onClick={handleClearAllCache}
-                                    className="flex items-center gap-1 px-3 py-1 text-sm text-white bg-orange-600 hover:bg-orange-700 rounded transition-colors"
-                                    title="전체 캐시 삭제"
-                                >
-                                    <Database className="w-4 h-4" />
-                                    전체 캐시 삭제
-                                </button>
-                            )}
-                            {/* {selectedFiles.size > 0 && (
-                                <button
-                                    onClick={handleDelete}
-                                    className="flex items-center gap-1 px-3 py-1 text-sm text-white bg-black rounded"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                    서버파일삭제 ({selectedFiles.size})
-                                </button>
-                            )} */}
-                        </div>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {cachedFiles.size > 0 && storageInfo && (
+                            <button
+                                onClick={handleClearAllCache}
+                                className="flex items-center gap-1 px-3 py-1 text-sm text-white bg-orange-600 hover:bg-orange-700 rounded transition-colors"
+                                title="전체 캐시 삭제"
+                            >
+                                <Database className="w-4 h-4" />
+                                전체 캐시 삭제
+                            </button>
+                        )}
                     </div>
                 </div>
-            )}
+            </div>
 
             {/* 검색 필터 */}
             <div className="mb-4 flex items-center gap-2 flex-wrap">
@@ -639,9 +636,14 @@ export default function Video() {
                     className="border border-gray-300 rounded px-2 py-1.5 text-sm w-24"
                 >
                     <option value="">년도</option>
-                    {[...new Set(vids.map((v) => v.date?.split("-")[0]).filter(Boolean))].sort().reverse().map((y) => (
-                        <option key={y} value={y}>{y}</option>
-                    ))}
+                    {[...new Set(vids.map((v) => v.date?.split("-")[0]).filter(Boolean))]
+                        .sort()
+                        .reverse()
+                        .map((y) => (
+                            <option key={y} value={y}>
+                                {y}
+                            </option>
+                        ))}
                 </select>
                 <select
                     value={searchMonth}
@@ -650,7 +652,9 @@ export default function Video() {
                 >
                     <option value="">월</option>
                     {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")).map((m) => (
-                        <option key={m} value={m}>{m}</option>
+                        <option key={m} value={m}>
+                            {m}
+                        </option>
                     ))}
                 </select>
                 <input
@@ -669,13 +673,20 @@ export default function Video() {
                 />
                 {(searchYear || searchMonth || searchNum || searchName) && (
                     <button
-                        onClick={() => { setSearchYear(""); setSearchMonth(""); setSearchNum(""); setSearchName(""); }}
+                        onClick={() => {
+                            setSearchYear("");
+                            setSearchMonth("");
+                            setSearchNum("");
+                            setSearchName("");
+                        }}
                         className="text-sm text-gray-500 hover:text-gray-700 px-2 py-1"
                     >
                         초기화
                     </button>
                 )}
-                <span className="text-sm text-gray-500 ml-auto">{filteredVids.length} / {vids.length}건</span>
+                <span className="text-sm text-gray-500 ml-auto">
+                    {filteredVids.length} / {vids.length}건
+                </span>
             </div>
 
             <Table>

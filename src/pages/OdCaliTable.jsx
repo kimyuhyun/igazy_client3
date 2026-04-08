@@ -172,7 +172,7 @@ export default function OdCaliTable() {
 
                 if (data.px_diameter) {
                     // 실제 윤뷰 지름.
-                    const limbusRealMM = 13.81;
+                    const limbusRealMM = 12.12;
 
                     // 광학 설계 기반 정밀 상수 forceLength 이다.
                     const F_PIXEL_640 = 471.43;

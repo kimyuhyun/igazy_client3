@@ -74,7 +74,7 @@ const DualLiveFrame = () => {
                 }
             } else {
                 // === 윤부 정보 ===
-                const limbusRealMM = LIMBUS_MM; // 13.81;
+                const limbusRealMM = LIMBUS_MM; // 12.12;
                 const limbusPxDiameter = data.pxDiameter; // 서버에서 받은 픽셀 지름
                 const distanceMM = calcMM(limbusRealMM, limbusPxDiameter);
                 console.log('[DEBUG] Auto measurement - limbus_px:', limbusPxDiameter, 'calculated distance:', distanceMM, 'mm');

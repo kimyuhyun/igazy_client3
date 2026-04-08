@@ -50,9 +50,6 @@ export default function Measure() {
     const currentFrameRef = useRef(0);
     const pollIntervalRef = useRef(null); // 폴링 interval 추적용
 
-    // 딜레이 함수 추가
-    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
     // Cleanup: 컴포넌트 언마운트 시 폴링 interval 정리
     useEffect(() => {
         return () => {
@@ -167,7 +164,7 @@ export default function Measure() {
                         console.log(data.progress);
                     }
                 } catch (error) {
-                    console.error('Progress polling error:', error);
+                    console.error("Progress polling error:", error);
                 }
             }, 300); // 0.3초마다 확인
 
@@ -191,14 +188,14 @@ export default function Measure() {
             // 진행 상황 toast 제거
             toast.dismiss("save-progress");
 
-            if (data.status === 'success') {
+            if (data.status === "success") {
                 toast.success(data.message);
                 setLimbusPX("");
             } else {
                 toast.error(data.message || "저장 실패");
             }
         } catch (error) {
-            console.error('Save error:', error);
+            console.error("Save error:", error);
             toast.dismiss("save-progress");
             toast.error("저장 중 오류 발생");
         } finally {
@@ -235,6 +232,7 @@ export default function Measure() {
             setLoading(true);
             setOdResults([]);
             setOsResults([]);
+            setEnded(false);
             currentFrameRef.current = 0;
             const { data } = await axios({
                 url: `${API_URL}/api/stop`,
@@ -242,12 +240,11 @@ export default function Measure() {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                timeout: 1000,
             });
             console.log(data);
             toast.success("연결확인");
         } catch (error) {
-            toast.error("타임아웃 3초, 연결을 확인해 주세요.");
+            toast.error("타임아웃 5초, 연결을 확인해 주세요.");
         } finally {
             setLoading(false);
         }
@@ -317,10 +314,10 @@ export default function Measure() {
                 <div className="flex justify-start">
                     <button
                         onClick={handleSocketDisconnect}
-                        className="px-4 py-2 rounded text-red-400 text-xs hover:bg-red-500 hover:text-white transition-all duration-300">
+                        className="px-4 py-2 rounded text-red-400 text-xs hover:bg-red-500 hover:text-white transition-all duration-300"
+                    >
                         소켓 연결 해제
                     </button>
-
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -411,6 +408,19 @@ export default function Measure() {
 
             {usrInfoPopup && (
                 <Popup width="xl" height="h-fit" onClose={handleCloseUsrInfoPopup}>
+                    <div className="absolute top-0 start-0 mt-3 ml-3">
+                        <RippleButton
+                            className="bg-green-600 hover:bg-green-400 text-white px-2 py-1 text-xs"
+                            onClick={() => {
+                                setPatientNum("99999999");
+                                setPatientName("임시저장");
+                                setLimbusMM("12.12");
+                            }}
+                        >
+                            Temp
+                        </RippleButton>
+                    </div>
+
                     <div className="flex flex-col">
                         <label className="mb-1 font-semibold text-gray-700 dark:text-gray-200">환자번호</label>
                         <input

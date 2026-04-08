@@ -7,7 +7,7 @@ import Layout from "../components/Layout";
 export default function LimbusTest() {
     const [uploadedImage, setUploadedImage] = useState(null);
     const [measuredPx, setMeasuredPx] = useState(null);
-    const [limbusMM, setLimbusMM] = useState(13.81);
+    const [limbusMM, setLimbusMM] = useState(12.12);
 
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
@@ -30,7 +30,7 @@ export default function LimbusTest() {
         return calcMM(limbusMMValue, measuredPx);
     };
 
-    const testValues = [10.5, 11.0, 11.5, 12.0, 12.5, 13.0, 13.5, 13.81, 14.0, 14.5];
+    const testValues = [10.5, 11.0, 11.5, 12.0, 12.5, 13.0, 13.5, 14.0, 14.5];
 
     return (
         <Layout>

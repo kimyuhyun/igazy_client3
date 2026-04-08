@@ -5,9 +5,7 @@ import LiveGraph from "../components/LiveGraph";
 import A4Page from "../components/A4Page";
 import ExamResultTable from "../components/ExamResultTable";
 import { calcMM } from "../utils/calcPxToMm";
-import { interpolateEyeAngle, CORRECTION_FACTOR } from "../utils/EyeAngleCalculator";
-import { calcEyeAngle } from "../utils/XAxisCalibrator";
-// import calculator from "../utils/oldRegressionEyeAngleCalculator";
+import calculator from "../utils/oldRegressionEyeAngleCalculator";
 // import calculator from "../utils/regressionEyeAngleCalculator";
 import useManualPointStore from "../stores/useManualPointStore";
 
@@ -116,25 +114,25 @@ export default function PDReport() {
                 setNewDistance(distance);
 
                 const obj = {
-                    xaxis_od_1st: calculatePD(xaxis_od_1st, "x", "OD"),
-                    xaxis_os_1st: calculatePD(xaxis_os_1st, "x", "OS"),
-                    yaxis_od_1st: calculatePD(yaxis_od_1st, "y", "OD"),
-                    yaxis_os_1st: calculatePD(yaxis_os_1st, "y", "OS"),
+                    xaxis_od_1st: calculatePD(xaxis_od_1st, "x", "OD", distance),
+                    xaxis_os_1st: calculatePD(xaxis_os_1st, "x", "OS", distance),
+                    yaxis_od_1st: calculatePD(yaxis_od_1st, "y", "OD", distance),
+                    yaxis_os_1st: calculatePD(yaxis_os_1st, "y", "OS", distance),
 
-                    xaxis_od_2nd: calculatePD(xaxis_od_2nd, "x", "OD"),
-                    xaxis_os_2nd: calculatePD(xaxis_os_2nd, "x", "OS"),
-                    yaxis_od_2nd: calculatePD(yaxis_od_2nd, "y", "OD"),
-                    yaxis_os_2nd: calculatePD(yaxis_os_2nd, "y", "OS"),
+                    xaxis_od_2nd: calculatePD(xaxis_od_2nd, "x", "OD", distance),
+                    xaxis_os_2nd: calculatePD(xaxis_os_2nd, "x", "OS", distance),
+                    yaxis_od_2nd: calculatePD(yaxis_od_2nd, "y", "OD", distance),
+                    yaxis_os_2nd: calculatePD(yaxis_os_2nd, "y", "OS", distance),
 
-                    xaxis_od_3rd: calculatePD(xaxis_od_3rd, "x", "OD"),
-                    xaxis_os_3rd: calculatePD(xaxis_os_3rd, "x", "OS"),
-                    yaxis_od_3rd: calculatePD(yaxis_od_3rd, "y", "OD"),
-                    yaxis_os_3rd: calculatePD(yaxis_os_3rd, "y", "OS"),
+                    xaxis_od_3rd: calculatePD(xaxis_od_3rd, "x", "OD", distance),
+                    xaxis_os_3rd: calculatePD(xaxis_os_3rd, "x", "OS", distance),
+                    yaxis_od_3rd: calculatePD(yaxis_od_3rd, "y", "OD", distance),
+                    yaxis_os_3rd: calculatePD(yaxis_os_3rd, "y", "OS", distance),
 
-                    xaxis_od_4th: calculatePD(xaxis_od_4th, "x", "OD"),
-                    xaxis_os_4th: calculatePD(xaxis_os_4th, "x", "OS"),
-                    yaxis_od_4th: calculatePD(yaxis_od_4th, "y", "OD"),
-                    yaxis_os_4th: calculatePD(yaxis_os_4th, "y", "OS"),
+                    xaxis_od_4th: calculatePD(xaxis_od_4th, "x", "OD", distance),
+                    xaxis_os_4th: calculatePD(xaxis_os_4th, "x", "OS", distance),
+                    yaxis_od_4th: calculatePD(yaxis_od_4th, "y", "OD", distance),
+                    yaxis_os_4th: calculatePD(yaxis_os_4th, "y", "OS", distance),
 
                     xaxis_od_5th: calculatePD_5th_only(xaxis_od_5th, "x", "OD", distance),
                     xaxis_os_5th: calculatePD_5th_only(xaxis_os_5th, "x", "OS", distance),
@@ -151,109 +149,66 @@ export default function PDReport() {
         setEditLimbusMM(limbusMM);
     }, [limbusMM]);
 
-    const calculatePD = (points, axis, side) => {
+    const calculatePD = (points, axis, side, distance) => {
         if (!points || points.length < 2 || points[0] == null || points[1] == null) {
             return "";
         }
 
+        // points는 mm 단위 → 모델 입력은 px 단위이므로 역변환
+        const scale = parseFloat(limbusMM) / parseFloat(limbusPX); // mm/px
         const differenceMM = points[0] - points[1];
+        const differencePX = scale > 0 ? differenceMM / scale : differenceMM;
 
-        // ========================================
-        // 방법 1: CORRECTION_FACTOR 0.717 적용
-        // ========================================
-        const correctedMM = differenceMM * CORRECTION_FACTOR;
-        const degrees = interpolateEyeAngle(correctedMM, angle);
+        console.log(side, differenceMM);
+
+        const degrees = calculator.calculateEyeAngle(parseFloat(angle), parseInt(distance), Math.abs(differencePX));
+
+        if (Number.isNaN(degrees)) {
+            return "";
+        }
+
         const radians = degrees * (Math.PI / 180);
         const pdValue = Math.tan(radians) * 100;
 
-        // ========================================
-        // 방법 2: 논문 공식 적용 (VOG 보정)
-        // 실제각도 = 0.978 × VOG각도 - 0.549
-        // ========================================
-        // const correctedMM = differenceMM;
-        // const tmpDegrees = interpolateEyeAngle(correctedMM, angle);
-        // const degrees = 0.978 * tmpDegrees - 0.549;
-        // const radians = degrees * (Math.PI / 180);
-        // const pdValue = Math.tan(radians) * 100;
-
-        // ========================================
-        // 방법 3: cos 보정 (CamAngle → 30.4° 기준 정규화)
-        // ========================================
-        // const degrees = calcEyeAngle(differenceMM, angle);
-        // const radians = Math.abs(degrees) * (Math.PI / 180);
-        // const pdValue = Math.tan(radians) * 100;
-
-        let direction;
-        if (axis === "x") {
-            if (side === "OD") {
-                if (differenceMM > 0) {
-                    direction = "ESO";
-                } else {
-                    direction = "EXO";
-                }
-            } else {
-                if (differenceMM > 0) {
-                    direction = "ESO";
-                } else {
-                    direction = "EXO";
-                }
-            }
-        } else {
-            if (differenceMM > 0) {
-                direction = "HYPO";
-            } else {
-                direction = "HYPER";
-            }
-        }
+        const direction =
+            axis === "x"
+                ? side === "OD"
+                    ? differenceMM > 0
+                        ? "ESO"
+                        : "EXO"
+                    : differenceMM > 0
+                      ? "ESO"
+                      : "EXO"
+                : differenceMM > 0
+                  ? "HYPO"
+                  : "HYPER";
 
         return `${degrees.toFixed(1)}° / ${pdValue.toFixed(1)} ${direction}`;
     };
 
-    const calculatePD_5th_only = (points, axis, side) => {
-        if (!points || points.length < 2 || points[0] == null || points[1] == null) {
+    const calculatePD_5th_only = (points, axis, side, distance) => {
+        const difference = points[0] - points[1];
+
+        const degrees = calculator.calculateEyeAngle(parseFloat(angle), parseInt(distance), Math.abs(difference));
+
+        if (Number.isNaN(degrees)) {
             return "";
         }
 
-        const differenceMM = points[0] - points[1];
-
-        // ========================================
-        // 방법 1: CORRECTION_FACTOR 0.717 적용
-        // ========================================
-        const correctedMM = differenceMM * CORRECTION_FACTOR;
-        const degrees = interpolateEyeAngle(correctedMM, angle);
         const radians = degrees * (Math.PI / 180);
         const pdValue = Math.tan(radians) * 100;
-
-        // ========================================
-        // 방법 2: 논문 공식 적용 (VOG 보정)
-        // 실제각도 = 0.978 × VOG각도 - 0.549
-        // ========================================
-        // const correctedMM = differenceMM;
-        // const degrees = interpolateEyeAngle(correctedMM, angle);
-        // const correctedDegrees = 0.978 * degrees - 0.549;
-        // const radians = correctedDegrees * (Math.PI / 180);
-        // const pdValue = Math.tan(radians) * 100;
-
-        // ========================================
-        // 방법 3: cos 보정 (CamAngle → 0° 기준 정규화)
-        // ========================================
-        // const camAngleRad = (angle * Math.PI) / 180;
-        // const calibAngleRad = (CALIB_CAM_ANGLE * Math.PI) / 180;
-        // const correctedMM = (differenceMM * Math.cos(camAngleRad)) / Math.cos(calibAngleRad);
-        // const degrees = interpolateEyeAngle(correctedMM, angle);
-        // const radians = degrees * (Math.PI / 180);
-        // const pdValue = Math.tan(radians) * 100;
 
         let direction = "";
         if (axis === "x") {
             if (side === "OD") {
-                direction = differenceMM > 0 ? "EXO" : "ESO";
+                direction = difference > 0 ? "EXO" : "ESO";
             } else {
-                direction = differenceMM > 0 ? "EXO" : "ESO";
+                direction = difference > 0 ? "EXO" : "ESO";
             }
         } else {
-            direction = differenceMM > 0 ? "HYPO" : "HYPER";
+            direction = difference > 0 ? "HYPO" : "HYPER";
         }
+
         return `${degrees.toFixed(1)}° / ${pdValue.toFixed(1)} ${direction}`;
     };
 

@@ -19,7 +19,7 @@ const SENSOR_WIDTH = 1.81; // mm (이미지 센서)
 const IMAGE_WIDTH = 640; // pixels (해상도)
 
 // === 윤부 정보 ===
-const limbusRealMM = 13.81; // 사용자 입력 또는 평균값
+const limbusRealMM = 12.12; // 사용자 입력 또는 평균값
 const limbusPxDiameter = data.pxDiameter; // 서버에서 받은 픽셀 지름
 */
 // 광학 상수 계산

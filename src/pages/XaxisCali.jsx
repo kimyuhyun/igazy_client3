@@ -12,7 +12,10 @@ import XaxisCalibrationTable, { saveCalibrationMeasurement } from "../components
 import EyeWsClient from "../utils/eyeWsClient";
 
 export default function XaxisCali() {
-    const { IP, DISTANCE, setDistance, LIMBUS_MM } = useVariableStore();
+    const { IP, DISTANCE, setDistance, LIMBUS_MM, LIMBUS_PX, FRAME_HEIGHT, setLimbusPX, setLimbusMM } =
+        useVariableStore();
+
+    const aspectClass = FRAME_HEIGHT <= 360 ? "aspect-[16/9]" : "aspect-[4/3]";
 
     const API_URL = `http://${IP}:8080`;
     const SOCKET_URL = `ws://${IP}:3000`;
@@ -32,7 +35,6 @@ export default function XaxisCali() {
     const [formData, setFormData] = useState({
         cam_angle: 0.0,
         delta_x: 0.0,
-        distance: 0.0,
         eye_angle: 0.0,
     });
 
@@ -44,6 +46,7 @@ export default function XaxisCali() {
 
     /**
      * 보정된 X값 계산 (유클리드 거리 + 부호 유지)
+     * 카메라-안구 X축 수평 정렬 오차를 보정하기 위해 Y 성분 포함
      */
     const calculateCorrectedX = (deltaX, deltaY) => {
         const distance = Math.sqrt(deltaX ** 2 + deltaY ** 2);
@@ -74,12 +77,14 @@ export default function XaxisCali() {
                 },
             });
 
-            // 여기서는 하드 코딩 안구모형의 윤부지름음 13.81mm을 사용
-            const limbusRealMM = 13.81;
+            // 여기서는 하드 코딩 안구모형의 윤부지름음 12.12mm을 사용
+            const limbusRealMM = 12.12;
             const limbusPxDiameter = data.pxDiameter;
             const distanceMM = calcMM(limbusRealMM, limbusPxDiameter);
 
             setDistance(Number(distanceMM.toFixed(0)));
+            setLimbusPX(data.pxDiameter);
+            setLimbusMM(limbusRealMM);
             setResultImage(`data:image/jpeg;base64,${data.frameBase64}`);
         } catch (error) {
             console.error("거리 측정 실패:", error);
@@ -131,15 +136,9 @@ export default function XaxisCali() {
         return statusConfig[status] || statusConfig.disconnected;
     };
 
-    // ✅ 저장 함수 수정
     const save = () => {
         if (!formData.cam_angle) {
             toast.error("cam_angle를 입력해주세요");
-            return;
-        }
-
-        if (!formData.distance) {
-            toast.error("distance를 입력해주세요");
             return;
         }
 
@@ -148,17 +147,16 @@ export default function XaxisCali() {
             return;
         }
 
-        if (!formData.eye_angle) {
+        if (!formData.eye_angle && formData.eye_angle !== 0) {
             toast.error("eye_angle을 입력해주세요");
             return;
         }
 
-        // ✅ 올바른 파라미터로 호출
-        saveCalibrationMeasurement(formData.cam_angle, formData.distance, formData.delta_x, formData.eye_angle);
+        saveCalibrationMeasurement(formData.cam_angle, formData.delta_x, formData.eye_angle);
 
         setFormData((prev) => ({
             ...prev,
-            eye_angle: Number(prev.eye_angle) + 5,
+            eye_angle: Number(prev.eye_angle) + 4,
             delta_x: "",
         }));
     };
@@ -213,12 +211,21 @@ export default function XaxisCali() {
             await new Promise((resolve) => setTimeout(resolve, 200));
         }
 
-        // 평균 계산 및 설정
+        // 평균 계산 및 mm 변환
         if (results.length > 0) {
-            const avg = results.reduce((acc, n) => acc + n, 0) / results.length;
+            const avgPx = results.reduce((acc, n) => acc + n, 0) / results.length;
+            const scale = parseFloat(LIMBUS_MM) / parseFloat(LIMBUS_PX);
+            let avgMm;
+            if (scale > 0) {
+                avgMm = avgPx * scale;
+            } else {
+                avgMm = 0;
+                toast.error("LIMBUS_MM과 LIMBUS_PX 값을 확인해주세요");
+            }
+
             setFormData((prev) => ({
                 ...prev,
-                delta_x: avg.toFixed(1),
+                delta_x: avgMm.toFixed(3),
             }));
         }
         setLoading(false);
@@ -310,13 +317,14 @@ export default function XaxisCali() {
                         </RippleButton>
                     </div>
 
-                    <div className="flex flex-row gap-2">
+                    <div className="flex flex-row gap-2 items-center">
                         <RippleButton
                             className="bg-green-600 hover:bg-green-400 text-white px-4 py-2"
                             onClick={() => getCamToEyeDistance()}
                         >
                             거리측정
                         </RippleButton>
+                        {LIMBUS_MM}mm / {LIMBUS_PX}px
                     </div>
 
                     <div className="flex flex-row gap-2">
@@ -348,7 +356,7 @@ export default function XaxisCali() {
                                 </span>
                             )}
                         </div>
-                        <canvas ref={canvasRef} className="w-full bg-black" />
+                        <canvas ref={canvasRef} className={`w-full bg-black ${aspectClass}`} />
                     </div>
                     <div>
                         <HorizontalRuler mm={DISTANCE} />
@@ -367,8 +375,10 @@ export default function XaxisCali() {
                             <ManualDistanceMeasurement
                                 imageSource={resultImage}
                                 onMeasurementComplete={(limbusPxDiameter) => {
-                                    const distanceMM = calcMM(LIMBUS_MM, limbusPxDiameter);
+                                    setLimbusMM("12.12");
+                                    const distanceMM = calcMM(12.12, limbusPxDiameter);
                                     setDistance(Number(distanceMM.toFixed(0)));
+                                    setLimbusPX(limbusPxDiameter);
                                 }}
                             />
                         )}
@@ -385,11 +395,7 @@ export default function XaxisCali() {
                     </div>
                     <div className="">
                         {resultImage2 && (
-                            <img
-                                src={resultImage2}
-                                alt="Distance Measurement Result"
-                                className="w-full bg-black"
-                            />
+                            <img src={resultImage2} alt="Distance Measurement Result" className="w-full bg-black" />
                         )}
                     </div>
                 </div>
@@ -407,15 +413,7 @@ export default function XaxisCali() {
                         <input
                             type="text"
                             className="border p-2 w-24 rounded"
-                            placeholder="distance"
-                            value={formData.distance || ""}
-                            onChange={(e) => setFormData({ ...formData, distance: e.target.value })}
-                        />
-
-                        <input
-                            type="text"
-                            className="border p-2 w-24 rounded"
-                            placeholder="delta_x"
+                            placeholder="delta_x (mm)"
                             value={formData.delta_x || ""}
                             onChange={(e) => setFormData({ ...formData, delta_x: e.target.value })}
                         />

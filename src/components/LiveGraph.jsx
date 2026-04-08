@@ -13,7 +13,7 @@ import { LEFT, RIGHT, X_AXIS, Y_AXIS } from "../utils/constants";
 import { verticalLinePlugin } from "../utils/verticalLinePlugin";
 import { Line } from "react-chartjs-2";
 import { analyzeHidePatternsFromProcessedData } from "../utils/hideRegionAnalyzer";
-import { prepareVisualizationData } from "../utils/chartDataProcessor";
+import { prepareVisualizationData, prepareRawData } from "../utils/chartDataProcessor";
 import { createChartOptionsX, createChartOptionsY } from "../utils/chartOptions";
 import { backgroundColorPlugin, dataLabelPlugin } from "../utils/chartPlugins";
 import useVariableStore from "../stores/useVariableStore";
@@ -60,6 +60,7 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
         };
 
         const newData = prepareVisualizationData(rawData);
+        // const newData = prepareRawData(rawData);
 
         newData[LEFT].isHide = osIsHideData;
         newData[RIGHT].isHide = odIsHideData;
@@ -247,7 +248,7 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
                     <div className="absolute left-1/2 -translate-x-1/2 font-semibold">X-Axis(px)</div>
 
                     <div className="flex items-center gap-0">
-                        {medianResult.length >= 6 && currentFrameRef != null && (
+                        {medianResult.length >= 4 && currentFrameRef != null && (
                             <button
                                 type="button"
                                 className="ms-2 bg-green-400 hover:bg-green-600 text-white rounded px-2 py-1"
