@@ -245,7 +245,7 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
                         <div className="bg-blue-500 size-3 ml-4" />
                         <div className="ml-1">OS</div>
                     </div>
-                    <div className="absolute left-1/2 -translate-x-1/2 font-semibold">X-Axis(px)</div>
+                    <div className="absolute left-1/2 -translate-x-1/2 font-semibold">X-Axis(mm)</div>
 
                     <div className="flex items-center gap-0">
                         {medianResult.length >= 4 && currentFrameRef != null && (
@@ -272,7 +272,7 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
                         <div className="bg-blue-500 size-3 ml-4" />
                         <div className="ml-1">OS</div>
                     </div>
-                    <div className="absolute left-1/2 -translate-x-1/2 font-semibold">Y-Axis(px)</div>
+                    <div className="absolute left-1/2 -translate-x-1/2 font-semibold">Y-Axis(mm)</div>
                     <div className="w-20" />
                 </div>
                 <div className="h-[260px] pr-1">

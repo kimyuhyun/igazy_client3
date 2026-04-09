@@ -95,6 +95,7 @@ export const createChartOptionsY = ({ renderedFrame, actualMaxFrame, processedDa
             },
         },
         y: {
+            reverse: true, // y축 반전
             min: -6,
             max: 6,
             ticks: { stepSize: 1 },
