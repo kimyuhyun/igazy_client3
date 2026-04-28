@@ -55,6 +55,7 @@ export default function Config() {
 
             console.log(data);
             setIgazyIP(data.ip);
+            toast.success("IGazy IP 주소를 불러왔습니다.");
         } catch (error) {
             toast.error("IGazy IP 주소를 불러오는데 실패했습니다.");
         }

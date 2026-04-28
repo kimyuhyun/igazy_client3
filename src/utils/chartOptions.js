@@ -40,8 +40,8 @@ export const createChartOptionsX = ({ renderedFrame, actualMaxFrame, processedDa
             },
         },
         y: {
-            min: -10,
-            max: 10,
+            min: -8,
+            max: 8,
             ticks: { stepSize: 1 },
             grid: {
                 color: "rgba(0,0,0,0.2)",
@@ -96,8 +96,8 @@ export const createChartOptionsY = ({ renderedFrame, actualMaxFrame, processedDa
         },
         y: {
             reverse: true, // y축 반전
-            min: -6,
-            max: 6,
+            min: -8,
+            max: 8,
             ticks: { stepSize: 1 },
             grid: {
                 color: "rgba(0,0,0,0.2)",

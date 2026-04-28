@@ -217,16 +217,6 @@ export function analyzeHidePatternsFromProcessedData(processedData) {
 
         const regionType = region.type === "od_hide_os_show" ? "OD hide, OS show" : "OD show, OS hide";
 
-        // console.log(`${regionNumber}구간: ${regionType}`);
-        // console.log(`  Frame 범위: ${region.startFrame} ~ ${region.endFrame}`);
-        // console.log(`  Index 범위: ${startIdx} ~ ${endIdx}`);
-        // console.log(`  총 프레임 수: ${frameCount}`);
-        // console.log(`  OD _x 중간값: ${medianData.odXMedian?.toFixed(6)}, 인덱스: ${medianData.odXMedianIdx}`);
-        // console.log(`  OD _y 중간값: ${medianData.odYMedian?.toFixed(6)}, 인덱스: ${medianData.odYMedianIdx}`);
-        // console.log(`  OS _x 중간값: ${medianData.osXMedian?.toFixed(6)}, 인덱스: ${medianData.osXMedianIdx}`);
-        // console.log(`  OS _y 중간값: ${medianData.osYMedian?.toFixed(6)}, 인덱스: ${medianData.osYMedianIdx}`);
-        // console.log("");
-
         // 결과 저장
         const result = {
             regionNumber: regionNumber,

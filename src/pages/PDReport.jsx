@@ -32,15 +32,34 @@ export default function PDReport() {
     // limbus_mm 수정용 state
     const [editLimbusMM, setEditLimbusMM] = useState(limbusMM);
 
-    // limbus_mm 값 변경 핸들러
-    const handleLimbusMMChange = () => {
-        if (!editLimbusMM || parseFloat(editLimbusMM) <= 0) {
+    // limbus_mm 값 변경 핸들러 (value 미전달 시 현재 editLimbusMM 사용)
+    const handleLimbusMMChange = (value) => {
+        const mmValue = value !== undefined ? value : editLimbusMM;
+        if (!mmValue || parseFloat(mmValue) <= 0) {
             alert("유효한 윤부 지름 값을 입력해주세요.");
             return;
         }
 
         const newParams = new URLSearchParams(searchParams);
-        newParams.set("limbus_mm", editLimbusMM);
+        newParams.set("limbus_mm", mmValue);
+
+        navigate(`?${newParams.toString()}`, { replace: true });
+        window.location.reload();
+    };
+
+    // angle 수정용 state
+    const [editAngle, setEditAngle] = useState(angle);
+
+    // angle 값 변경 핸들러 (value 미전달 시 현재 editAngle 사용)
+    const handleAngleChange = (value) => {
+        const angleValue = value !== undefined ? value : editAngle;
+        if (angleValue === "" || isNaN(parseFloat(angleValue))) {
+            alert("유효한 각도 값을 입력해주세요.");
+            return;
+        }
+
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set("angle", angleValue);
 
         navigate(`?${newParams.toString()}`, { replace: true });
         window.location.reload();
@@ -161,7 +180,7 @@ export default function PDReport() {
         // ========================================
         // 방법 1: CORRECTION_FACTOR 0.717 적용
         // ========================================
-        const correctedMM = differenceMM * CORRECTION_FACTOR;
+        const correctedMM = differenceMM; // * CORRECTION_FACTOR;
         const degrees = interpolateEyeAngle(correctedMM, angle);
         const radians = degrees * (Math.PI / 180);
         const pdValue = Math.tan(radians) * 100;
@@ -267,9 +286,10 @@ export default function PDReport() {
 
     return (
         <div className="bg-gray-400 print:bg-white p-4 print:p-0 relative">
-            {/* 왼쪽 상단 limbus_mm 수정 input */}
-            <div className="fixed top-4 left-4 z-50 print:hidden">
-                <div className="bg-white rounded-lg shadow-lg p-3 border-2 border-blue-500">
+            {/* 왼쪽 상단 컨트롤 패널 */}
+            <div className="fixed top-4 left-4 z-50 print:hidden flex flex-col gap-2">
+                
+                {/* <div className="bg-white rounded-lg shadow-lg p-3 border-2 border-blue-500">
                     <label className="block text-xs font-semibold text-gray-700 mb-1">윤부 지름 (mm)</label>
                     <div className="flex gap-2 items-center">
                         <input
@@ -286,33 +306,60 @@ export default function PDReport() {
                         />
                         <div className="flex flex-col gap-1">
                             <button
-                                onClick={() => setEditLimbusMM((prev) => (parseFloat(prev) + 0.1).toFixed(1))}
+                                onClick={() => handleLimbusMMChange((parseFloat(editLimbusMM) + 0.1).toFixed(1))}
                                 className="px-2 py-0.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-semibold"
                                 title="+0.1"
                             >
                                 +0.1
                             </button>
                             <button
-                                onClick={() =>
-                                    setEditLimbusMM((prev) => Math.max(0, parseFloat(prev) - 0.1).toFixed(1))
-                                }
+                                onClick={() => handleLimbusMMChange(Math.max(0, parseFloat(editLimbusMM) - 0.1).toFixed(1))}
                                 className="px-2 py-0.5 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors font-semibold"
                                 title="-0.1"
                             >
                                 -0.1
                             </button>
                         </div>
-                        <button
-                            onClick={handleLimbusMMChange}
-                            className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors font-semibold"
-                        >
-                            적용
-                        </button>
                     </div>
                 </div>
+
+                <div className="bg-white rounded-lg shadow-lg p-3 border-2 border-orange-500">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">각도 (°)</label>
+                    <div className="flex gap-2 items-center">
+                        <input
+                            type="number"
+                            step="1"
+                            value={editAngle}
+                            onChange={(e) => setEditAngle(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    handleAngleChange();
+                                }
+                            }}
+                            className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        />
+                        <div className="flex flex-col gap-1">
+                            <button
+                                onClick={() => handleAngleChange((parseFloat(editAngle) + 1).toFixed(0))}
+                                className="px-2 py-0.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-semibold"
+                                title="+1"
+                            >
+                                +1
+                            </button>
+                            <button
+                                onClick={() => handleAngleChange((parseFloat(editAngle) - 1).toFixed(0))}
+                                className="px-2 py-0.5 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors font-semibold"
+                                title="-1"
+                            >
+                                -1
+                            </button>
+                        </div>
+                    </div>
+                </div> */}
             </div>
 
-            <div className="space-y-4 print:space-y-0">
+            {/* <div className="space-y-4 print:space-y-0"> */}
+            <div className="flex flex-row">
                 <A4Page>
                     <div className="border-b-4 border-yellow-400 flex flex-row justify-between">
                         <div className="bg-yellow-400 px-4 py-2 font-bold">1</div>

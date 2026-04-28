@@ -230,7 +230,7 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
         localStorage.setItem("OSResultsData", JSON.stringify(osResults));
         localStorage.setItem("PDReportData", JSON.stringify(currentData));
         window.open(
-            `/pd_report?patient_num=${PATIENT_NUM}&patient_name=${PATIENT_NAME}&distance=${DISTANCE}&angle=${ANGLE}&limbus_mm=${LIMBUS_MM}&limbus_px=${LIMBUS_PX}`,
+            `/pd_report?patient_num=${PATIENT_NUM}&patient_name=${PATIENT_NAME}&angle=${ANGLE}&limbus_mm=${LIMBUS_MM}&limbus_px=${LIMBUS_PX}`,
             "_blank",
         );
     };

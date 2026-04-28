@@ -33,7 +33,7 @@ const DualLiveFrame = ({ onClose }) => {
     const [angleResultImage, setAngleResultImage] = useState(null);
     const [buttonTopPosition, setButtonTopPosition] = useState(180);
 
-    const getCamToEyeDistance = async () => {
+    const getLimbusDetect = async () => {
         try {
             console.log('[DEBUG] Calling API:', `${API_URL}/api/limbus_detect`);
             const { data } = await axios({
@@ -70,7 +70,7 @@ const DualLiveFrame = ({ onClose }) => {
 
     const getOneFramePupilDetect = async () => {
         try {
-            const url = `${API_URL}/api/one_frame_pupil_detect?idx=50`;
+            const url = `${API_URL}/api/one_frame_pupil_detect?idx=90`;
             const { data } = await axios({
                 url,
                 method: "GET",
@@ -197,7 +197,7 @@ const DualLiveFrame = ({ onClose }) => {
                         <RippleButton
                             className="px-4 bg-green-500 hover:bg-green-600 text-white py-2 text-lg"
                             onClick={async () => {
-                                await getCamToEyeDistance();
+                                await getLimbusDetect();
                                 await getOneFramePupilDetect();
                             }}
                         >
