@@ -42,21 +42,21 @@ const DualDetectorFrame = forwardRef(({ onEnded, onOdResults, onOsResults }, ref
 
         // Pupil LIVE frame (OD / OS)
         const offLive = wsClient.onLive(({ data }) => {
-            const { frameIndex, frameBase64, eye, x, y, camAngle, isHide } = data;
+            const { frameIndex, frameBase64, eye, x, y, camAngle, isHide, majorR, minorR } = data;
 
             if (!frameBufferRef.current[frameIndex]) {
                 frameBufferRef.current[frameIndex] = {};
             }
 
             if (eye === "OD") {
-                onOdResults({ frame_index: frameIndex, x, y, is_hide: isHide });
+                onOdResults({ frame_index: frameIndex, x, y, is_hide: isHide, major_r: majorR, minor_r: minorR });
                 drawBase64ToCanvas(frameBase64, odCanvasRef.current);
                 setConnectionStatus((prev) => ({ ...prev, OD: "connected" }));
                 frameBufferRef.current[frameIndex].odFrame = frameBase64;
             }
 
             if (eye === "OS") {
-                onOsResults({ frame_index: frameIndex, x, y, is_hide: isHide });
+                onOsResults({ frame_index: frameIndex, x, y, is_hide: isHide, major_r: majorR, minor_r: minorR });
                 drawBase64ToCanvas(frameBase64, osCanvasRef.current);
                 setConnectionStatus((prev) => ({ ...prev, OS: "connected" }));
                 frameBufferRef.current[frameIndex].osFrame = frameBase64;

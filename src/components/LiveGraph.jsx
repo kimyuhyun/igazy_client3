@@ -13,11 +13,10 @@ import { LEFT, RIGHT, X_AXIS, Y_AXIS } from "../utils/constants";
 import { verticalLinePlugin } from "../utils/verticalLinePlugin";
 import { Line } from "react-chartjs-2";
 import { analyzeHidePatternsFromProcessedData } from "../utils/hideRegionAnalyzer";
-import { prepareVisualizationData, prepareRawData } from "../utils/chartDataProcessor";
-import { createChartOptionsX, createChartOptionsY } from "../utils/chartOptions";
+import { prepareVisualizationData, prepareRawData, smoothData } from "../utils/chartDataProcessor";
+import { createChartOptionsX, createChartOptionsY, createChartOptionsPupil } from "../utils/chartOptions";
 import { backgroundColorPlugin, dataLabelPlugin } from "../utils/chartPlugins";
 import useVariableStore from "../stores/useVariableStore";
-import useManualPointStore from "../stores/useManualPointStore";
 import useProcessedEyeData from "../hooks/useProcessedEyeData";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, verticalLinePlugin);
@@ -47,10 +46,8 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
     }, []);
 
     // 커스텀 훅으로 데이터 추출
-    const { odXData, osXData, odYData, osYData, odIsHideData, osIsHideData } = useProcessedEyeData(
-        odResults,
-        osResults,
-    );
+    const { odXData, osXData, odYData, osYData, odMajorRData, osMajorRData, odIsHideData, osIsHideData } =
+        useProcessedEyeData(odResults, osResults);
 
     // 전처리된 데이터 계산 (isHide 데이터 포함)
     const processedData = useMemo(() => {
@@ -81,19 +78,6 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
     useEffect(() => {
         if (processedDataRef) processedDataRef.current = processedData;
     }, [processedData, processedDataRef]);
-
-    // 현재 프레임 데이터를 캡처하는 함수
-    const capturePoint = (type) => {
-        const storeKey = type === "source" ? "src4th" : "dst4th";
-        useManualPointStore.getState().setPoint(storeKey, {
-            frame: renderedFrame,
-            odX: processedData[RIGHT][X_AXIS][renderedFrame],
-            odY: processedData[RIGHT][Y_AXIS][renderedFrame],
-            osX: processedData[LEFT][X_AXIS][renderedFrame],
-            osY: processedData[LEFT][Y_AXIS][renderedFrame],
-        });
-        setManualPoints((prev) => ({ ...prev, [type]: renderedFrame }));
-    };
 
     // processedData가 준비된 후 분석 실행
     useEffect(() => {
@@ -138,7 +122,9 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
     }, [processedData]);
 
     useEffect(() => {
-        if (!currentFrameRef) return;
+        if (!currentFrameRef) {
+            return;
+        }
 
         const interval = setInterval(() => {
             if (currentFrameRef.current !== renderedFrame) {
@@ -223,6 +209,40 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
         [renderedFrame, actualMaxFrame, processedData],
     );
 
+    const smoothedOdMajorR = useMemo(() => smoothData(odMajorRData), [odMajorRData]);
+    const smoothedOsMajorR = useMemo(() => smoothData(osMajorRData), [osMajorRData]);
+
+    const chartDataPupil = {
+        labels: Array.from({ length: smoothedOdMajorR.length }, (_, i) => i),
+        datasets: [
+            {
+                label: "OD",
+                data: smoothedOdMajorR,
+                borderColor: "red",
+                backgroundColor: "rgba(255,0,0,0.1)",
+                borderWidth: 1,
+                tension: 0.4,
+                cubicInterpolationMode: "monotone",
+                pointRadius: 0,
+            },
+            {
+                label: "OS",
+                data: smoothedOsMajorR,
+                borderColor: "blue",
+                backgroundColor: "rgba(0,0,255,0.1)",
+                borderWidth: 1,
+                tension: 0.4,
+                cubicInterpolationMode: "monotone",
+                pointRadius: 0,
+            },
+        ],
+    };
+
+    const chartOptionsPupil = useMemo(
+        () => createChartOptionsPupil({ renderedFrame, actualMaxFrame }),
+        [renderedFrame, actualMaxFrame],
+    );
+
     const showPDRport = async () => {
         const currentData = Array.isArray(medianResult) ? [...medianResult] : [];
 
@@ -237,17 +257,18 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
 
     return (
         <div className="space-y-0">
-            <div className="bg-white dark:bg-black p-0 text-xs">
-                <div className="relative flex flex-row justify-between items-center">
+            <div className="relative bg-white dark:bg-black p-0 text-xs">
+                <div className="absolute -top-4 w-full flex flex-row justify-between items-center">
                     <div className="flex items-center">
                         <div className="bg-red-400 size-3" />
                         <div className="ml-1">OD</div>
                         <div className="bg-blue-500 size-3 ml-4" />
                         <div className="ml-1">OS</div>
                     </div>
-                    <div className="absolute left-1/2 -translate-x-1/2 font-semibold">X-Axis(mm)</div>
 
-                    <div className="flex items-center gap-0">
+                    <div className="absolute w-full flex justify-center font-semibold">X-Axis(mm)</div>
+
+                    <div className="flex items-center gap-0 z-10">
                         {medianResult.length >= 4 && currentFrameRef != null && (
                             <button
                                 type="button"
@@ -259,24 +280,26 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
                         )}
                     </div>
                 </div>
-                <div className="h-[260px] pr-1">
+                <div className="h-[200px] pr-1">
                     <Line data={chartDataX} options={chartOptionsX} />
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-black p-0 text-xs">
-                <div className="relative flex flex-row justify-between items-center">
-                    <div className="flex items-center">
-                        <div className="bg-red-400 size-3" />
-                        <div className="ml-1">OD</div>
-                        <div className="bg-blue-500 size-3 ml-4" />
-                        <div className="ml-1">OS</div>
-                    </div>
-                    <div className="absolute left-1/2 -translate-x-1/2 font-semibold">Y-Axis(mm)</div>
-                    <div className="w-20" />
+            <div className="relative bg-white dark:bg-black p-0 text-xs">
+                <div className="absolute top-[-7px] w-full flex flex-row justify-center items-center">
+                    <div className="font-semibold">Y-Axis(mm)</div>
                 </div>
-                <div className="h-[260px] pr-1">
+                <div className="h-[200px] pr-1">
                     <Line data={chartDataY} options={chartOptionsY} />
+                </div>
+            </div>
+
+            <div className="relative bg-white dark:bg-black p-0 text-xs">
+                <div className="absolute top-[-7px] w-full flex flex-row justify-center items-center">
+                    <div className="font-semibold">Pupil(mm)</div>
+                </div>
+                <div className="h-[200px] pr-1">
+                    <Line data={chartDataPupil} options={chartOptionsPupil} />
                 </div>
             </div>
         </div>

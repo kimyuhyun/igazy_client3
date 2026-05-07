@@ -50,6 +50,32 @@ export const createChartOptionsX = ({ renderedFrame, actualMaxFrame, processedDa
     },
 });
 
+export const createChartOptionsPupil = ({ renderedFrame, actualMaxFrame }) => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 1 },
+    plugins: {
+        legend: { display: false },
+        title: { display: false },
+        verticalLine: { frame: renderedFrame },
+    },
+    scales: {
+        x: {
+            type: "linear",
+            min: 0,
+            max: parseInt(actualMaxFrame),
+            ticks: { stepSize: 30, display: false },
+            grid: { display: false },
+        },
+        y: {
+            min: 0,
+            max: 8,
+            ticks: { stepSize: 1 },
+            grid: { color: "rgba(0,0,0,0.2)" },
+        },
+    },
+});
+
 /**
  * Y축 차트 옵션 생성
  *

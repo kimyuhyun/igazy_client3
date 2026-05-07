@@ -172,6 +172,24 @@ const interpolateNaN = (data) => {
 };
 
 /**
+ * 이전값 대비 maxDelta 초과 시 이전값으로 교체 (5회 반복으로 연속 스파이크도 처리)
+ * @param {number[]} data - 원시 데이터
+ * @param {number} maxDelta - 허용 최대 변화량
+ * @returns {number[]} 스파이크가 이전값으로 대체된 데이터
+ */
+export const smoothData = (data, maxDelta = 2.05) => {
+    let d = [...data];
+    for (let pass = 0; pass < 5; pass++) {
+        for (let i = 1; i < d.length; i++) {
+            if (Math.abs(d[i] - d[i - 1]) > maxDelta) {
+                d[i] = d[i - 1];
+            }
+        }
+    }
+    return d;
+};
+
+/**
  * 차트 생성을 위한 데이터 전처리 (스파이크 제거 버전)
  * 처리 순서: 1) Z-score 스파이크 제거 → 2) NaN 선형 보간 → 3) Median Filter 마무리
  * @param {Object} inputData - 원시 안구 추적 데이터 {left: {x: [], y: []}, right: {x: [], y: []}}

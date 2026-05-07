@@ -20,14 +20,11 @@ export default function useProcessedEyeData(odResults, osResults) {
     const osXData = useMemo(() => extractField(osResults, "x", 0).map((v) => v * scale), [osResults, scale]);
     const odYData = useMemo(() => extractField(odResults, "y", 0).map((v) => v * scale), [odResults, scale]);
     const osYData = useMemo(() => extractField(osResults, "y", 0).map((v) => v * scale), [osResults, scale]);
+    const odMajorRData = useMemo(() => extractField(odResults, "major_r", 0).map((v) => v * scale), [odResults, scale]);
+    const osMajorRData = useMemo(() => extractField(osResults, "major_r", 0).map((v) => v * scale), [osResults, scale]);
 
-    // const odXData = useMemo(() => extractField(odResults, "x", 0), [odResults]);
-    // const osXData = useMemo(() => extractField(osResults, "x", 0), [osResults]);
-    // const odYData = useMemo(() => extractField(odResults, "y", 0), [odResults]);
-    // const osYData = useMemo(() => extractField(osResults, "y", 0), [osResults]);
-    
     const odIsHideData = useMemo(() => extractField(odResults, "is_hide", false), [odResults]);
     const osIsHideData = useMemo(() => extractField(osResults, "is_hide", false), [osResults]);
 
-    return { odXData, osXData, odYData, osYData, odIsHideData, osIsHideData };
+    return { odXData, osXData, odYData, osYData, odMajorRData, osMajorRData, odIsHideData, osIsHideData };
 }
