@@ -1,11 +1,9 @@
 // components/DualVideoPlayer.jsx
 import { useEffect, useState } from "react";
-import useVariableStore from "../stores/useVariableStore";
 
 export default function DualVideoPlayer({ videoData }) {
     const [currentFrame, setCurrentFrame] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
-    const { FRAME_HEIGHT } = useVariableStore();
     // 영상 재생
     useEffect(() => {
         if (!isPlaying || !videoData) return;
@@ -43,7 +41,7 @@ export default function DualVideoPlayer({ videoData }) {
                             alt={`OD Frame ${currentFrame}`}
                             className="w-full bg-black"
                             width={640}
-                            height={FRAME_HEIGHT}
+                            height={360}
                         />
                     )}
                 </div>
@@ -59,7 +57,7 @@ export default function DualVideoPlayer({ videoData }) {
                             alt={`OS Frame ${currentFrame}`}
                             className="w-full bg-black"
                             width={640}
-                            height={FRAME_HEIGHT}
+                            height={360}
                         />
                     )}
                 </div>

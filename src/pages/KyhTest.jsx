@@ -13,7 +13,7 @@ import ManualToggleSwitch from "../components/ManualToggleSwitch";
 import { calcMM } from "../utils/calcPxToMm";
 
 export default function KyhTest() {
-    const { IP, DISTANCE, LIMBUS_MM, LIMBUS_PX, setDistance, setLimbusPX, FRAME_HEIGHT } = useVariableStore();
+    const { IP, DISTANCE, LIMBUS_MM, LIMBUS_PX, setDistance, setLimbusPX } = useVariableStore();
 
     const API_URL = `http://${IP}:8080`;
     const SOCKET_URL = `ws://${IP}:3000`;
@@ -233,7 +233,7 @@ export default function KyhTest() {
                                 {getStatusBadge(connectionStatus).text}
                             </span>
                         </div>
-                        <canvas ref={canvasRef} className="w-full bg-black" width={640} height={FRAME_HEIGHT} />
+                        <canvas ref={canvasRef} className="w-full bg-black" width={640} height={360} />
                     </div>
 
                     {/* 거리 자 + 윤부 정보 */}

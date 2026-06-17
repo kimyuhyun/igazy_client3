@@ -239,8 +239,8 @@ const LiveGraph = React.memo(({ odResults = [], osResults = [], maxFrame = 0, cu
     };
 
     const chartOptionsPupil = useMemo(
-        () => createChartOptionsPupil({ renderedFrame, actualMaxFrame }),
-        [renderedFrame, actualMaxFrame],
+        () => createChartOptionsPupil({ renderedFrame, actualMaxFrame, processedData }),
+        [renderedFrame, actualMaxFrame, processedData],
     );
 
     const showPDRport = async () => {

@@ -12,10 +12,10 @@ import XaxisCalibrationTable, { saveCalibrationMeasurement } from "../components
 import EyeWsClient from "../utils/eyeWsClient";
 
 export default function XaxisCali() {
-    const { IP, DISTANCE, setDistance, LIMBUS_MM, LIMBUS_PX, FRAME_HEIGHT, setLimbusPX, setLimbusMM } =
+    const { IP, DISTANCE, setDistance, LIMBUS_MM, LIMBUS_PX, setLimbusPX, setLimbusMM } =
         useVariableStore();
 
-    const aspectClass = FRAME_HEIGHT <= 360 ? "aspect-[16/9]" : "aspect-[4/3]";
+    const aspectClass = "aspect-[16/9]";
 
     const API_URL = `http://${IP}:8080`;
     const SOCKET_URL = `ws://${IP}:3000`;

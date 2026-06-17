@@ -50,7 +50,7 @@ export const createChartOptionsX = ({ renderedFrame, actualMaxFrame, processedDa
     },
 });
 
-export const createChartOptionsPupil = ({ renderedFrame, actualMaxFrame }) => ({
+export const createChartOptionsPupil = ({ renderedFrame, actualMaxFrame, processedData }) => ({
     responsive: true,
     maintainAspectRatio: false,
     animation: { duration: 1 },
@@ -58,6 +58,7 @@ export const createChartOptionsPupil = ({ renderedFrame, actualMaxFrame }) => ({
         legend: { display: false },
         title: { display: false },
         verticalLine: { frame: renderedFrame },
+        backgroundColorPlugin: { processedData },
     },
     scales: {
         x: {

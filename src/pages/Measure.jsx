@@ -312,12 +312,12 @@ export default function Measure() {
         <Layout>
             <div className="flex flex-col justify-between min-h-[80vh]">
                 <div className="flex justify-start">
-                    <button
+                    {/* <button
                         onClick={handleSocketDisconnect}
                         className="px-4 py-2 rounded text-red-400 text-xs hover:bg-red-500 hover:text-white transition-all duration-300"
                     >
                         소켓 연결 해제
-                    </button>
+                    </button> */}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">

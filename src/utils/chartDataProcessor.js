@@ -174,16 +174,14 @@ const interpolateNaN = (data) => {
 /**
  * 이전값 대비 maxDelta 초과 시 이전값으로 교체 (5회 반복으로 연속 스파이크도 처리)
  * @param {number[]} data - 원시 데이터
- * @param {number} maxDelta - 허용 최대 변화량
  * @returns {number[]} 스파이크가 이전값으로 대체된 데이터
  */
-export const smoothData = (data, maxDelta = 2.05) => {
+export const smoothData = (data) => {
     let d = [...data];
-    for (let pass = 0; pass < 5; pass++) {
-        for (let i = 1; i < d.length; i++) {
-            if (Math.abs(d[i] - d[i - 1]) > maxDelta) {
-                d[i] = d[i - 1];
-            }
+    for (let i = 0; i < d.length; i++) {
+        if (d[i] <= 0 || d[i] > 8) {
+            const prev = i > 0 ? d[i - 1] : null;
+            d[i] = prev !== null && prev > 0 && prev <= 8 ? prev : 4;
         }
     }
     return d;

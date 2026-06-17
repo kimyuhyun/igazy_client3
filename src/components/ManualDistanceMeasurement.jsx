@@ -1,15 +1,15 @@
 // components/ManualDistanceMeasurement.jsx
 import React, { useRef, useEffect, useState } from "react";
 import { X, Check, RotateCcw } from "lucide-react";
-import useVariableStore from "../stores/useVariableStore";
 
 const ManualDistanceMeasurement = React.memo(({ imageSource, onMeasurementComplete }) => {
-    const { FRAME_HEIGHT } = useVariableStore();
     const canvasRef = useRef(null);
     const [points, setPoints] = useState([]);
     const [imageLoaded, setImageLoaded] = useState(false);
     const [mousePos, setMousePos] = useState(null);
+    const [canvasHeight, setCanvasHeight] = useState(480);
     const imageRef = useRef(null);
+    const CANVAS_WIDTH = 640;
 
     // 이미지 로드
     useEffect(() => {
@@ -19,6 +19,8 @@ const ManualDistanceMeasurement = React.memo(({ imageSource, onMeasurementComple
         img.src = imageSource;
         img.onload = () => {
             imageRef.current = img;
+            const ratio = img.naturalHeight / img.naturalWidth;
+            setCanvasHeight(Math.round(CANVAS_WIDTH * ratio));
             setImageLoaded(true);
             drawCanvas();
         };
@@ -179,8 +181,8 @@ const ManualDistanceMeasurement = React.memo(({ imageSource, onMeasurementComple
         <div className="relative">
             <canvas
                 ref={canvasRef}
-                width={640}
-                height={FRAME_HEIGHT}
+                width={CANVAS_WIDTH}
+                height={canvasHeight}
                 className={`bg-black ${points.length < 2 ? "cursor-none" : "cursor-default"}`}
                 onClick={handleCanvasClick}
                 onMouseMove={handleMouseMove}

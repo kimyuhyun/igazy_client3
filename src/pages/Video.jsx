@@ -118,7 +118,6 @@ export default function Video() {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                timeout: 1000,
             });
             console.log(data);
             setVids(transformFileData(data.files, formatFileSize));
@@ -598,7 +597,7 @@ export default function Video() {
                     <div className="flex items-center gap-2 text-sm">
                         <Database className="w-4 h-4" />
                         <span>
-                            캐시 사용량: {" "}
+                            캐시 사용량:{" "}
                             {storageInfo && (
                                 <>
                                     {(storageInfo.usage / 1024 / 1024).toFixed(1)} MB /{" "}

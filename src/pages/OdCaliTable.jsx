@@ -13,7 +13,7 @@ import CalibrationTable from "../components/CalibrationTable";
  */
 
 export default function OdCaliTable() {
-    const { IP, DISTANCE, setDistance, FRAME_HEIGHT } = useVariableStore();
+    const { IP, DISTANCE, setDistance } = useVariableStore();
 
     const urls = {
         OD: `http://${IP}:8081/1/stream`,
@@ -308,7 +308,7 @@ export default function OdCaliTable() {
                                 </span>
                             )}
                         </div>
-                        <canvas ref={canvasRef} className="w-full bg-black" width={640} height={FRAME_HEIGHT} />
+                        <canvas ref={canvasRef} className="w-full bg-black" width={640} height={360} />
                     </div>
 
                     <div className="relative bg-gray-800 rounded shadow overflow-hidden">
@@ -336,7 +336,7 @@ export default function OdCaliTable() {
                                 alt="Distance Measurement Result"
                                 className="w-full bg-black"
                                 width={640}
-                                height={FRAME_HEIGHT}
+                                height={360}
                             />
                         )}
                     </div>
@@ -347,7 +347,7 @@ export default function OdCaliTable() {
                                 alt="Distance Measurement Result"
                                 className="w-full bg-black"
                                 width={640}
-                                height={FRAME_HEIGHT}
+                                height={360}
                             />
                         )}
                         <div className="bg-white p-1 absolute top-0 left-0">{trakingArr[trakingArr.length - 1]}</div>

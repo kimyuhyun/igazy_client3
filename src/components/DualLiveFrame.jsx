@@ -15,8 +15,7 @@ import { drawBase64ToCanvas } from "../utils/canvasUtils";
 import EyeCanvas from "./EyeCanvas";
 
 const DualLiveFrame = ({ onClose }) => {
-    const { IP, LIMBUS_MM, DISTANCE, ANGLE, setAngle, setDistance, setLimbusPX, FRAME_HEIGHT } =
-        useVariableStore();
+    const { IP, LIMBUS_MM, DISTANCE, ANGLE, setAngle, setDistance, setLimbusPX } = useVariableStore();
 
     const API_URL = `http://${IP}:8080`;
     const SOCKET_URL = `ws://${IP}:3000`;
@@ -33,40 +32,40 @@ const DualLiveFrame = ({ onClose }) => {
     const [angleResultImage, setAngleResultImage] = useState(null);
     const [buttonTopPosition, setButtonTopPosition] = useState(180);
 
-    const getLimbusDetect = async () => {
-        try {
-            console.log('[DEBUG] Calling API:', `${API_URL}/api/limbus_detect`);
-            const { data } = await axios({
-                url: `${API_URL}/api/limbus_detect`,
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-            });
+    // const getLimbusDetect = async () => {
+    //     try {
+    //         console.log('[DEBUG] Calling API:', `${API_URL}/api/limbus_detect`);
+    //         const { data } = await axios({
+    //             url: `${API_URL}/api/limbus_detect`,
+    //             method: "GET",
+    //             headers: {
+    //                 "Content-Type": "application/json",
+    //             },
+    //         });
 
-            console.log('[DEBUG] API Response:', data);
+    //         console.log('[DEBUG] API Response:', data);
 
-            if (data.error) {
-                console.error('[ERROR] Server returned error:', data.error);
-                toast.error("윤부를 찾을 수 없습니다.");
-                if (odCanvasRef.current) {
-                    const base64 = odCanvasRef.current.toDataURL("image/jpeg").split(",")[1];
-                    setDistanceResultImage(`data:image/jpeg;base64,${base64}`);
-                }
-            } else {
-                const limbusRealMM = LIMBUS_MM;
-                const limbusPxDiameter = data.pxDiameter;
-                const distanceMM = calcMM(limbusRealMM, limbusPxDiameter);
-                console.log('[DEBUG] Auto measurement - limbus_px:', limbusPxDiameter, 'calculated distance:', distanceMM, 'mm');
-                setLimbusPX(limbusPxDiameter);
-                setDistance(Number(distanceMM.toFixed(0)));
-                setDistanceResultImage(`data:image/jpeg;base64,${data.frameBase64}`);
-            }
-        } catch (error) {
-            console.error('[ERROR] API call failed:', error);
-            toast.error(error.response?.data?.error || error.message || "API 호출 실패");
-        }
-    };
+    //         if (data.error) {
+    //             console.error('[ERROR] Server returned error:', data.error);
+    //             toast.error("윤부를 찾을 수 없습니다.");
+    //             if (odCanvasRef.current) {
+    //                 const base64 = odCanvasRef.current.toDataURL("image/jpeg").split(",")[1];
+    //                 setDistanceResultImage(`data:image/jpeg;base64,${base64}`);
+    //             }
+    //         } else {
+    //             const limbusRealMM = LIMBUS_MM;
+    //             const limbusPxDiameter = data.pxDiameter;
+    //             const distanceMM = calcMM(limbusRealMM, limbusPxDiameter);
+    //             console.log('[DEBUG] Auto measurement - limbus_px:', limbusPxDiameter, 'calculated distance:', distanceMM, 'mm');
+    //             setLimbusPX(limbusPxDiameter);
+    //             setDistance(Number(distanceMM.toFixed(0)));
+    //             setDistanceResultImage(`data:image/jpeg;base64,${data.frameBase64}`);
+    //         }
+    //     } catch (error) {
+    //         console.error('[ERROR] API call failed:', error);
+    //         toast.error(error.response?.data?.error || error.message || "API 호출 실패");
+    //     }
+    // };
 
     const getOneFramePupilDetect = async () => {
         try {
@@ -79,27 +78,33 @@ const DualLiveFrame = ({ onClose }) => {
                 },
             });
 
-            if (data.error) {
-                console.error("에러:", data.error);
-                toast.error(data.error);
-                return;
-            }
+            console.log(data);
 
             setAngle(data.camAngle);
             setAngleResultImage(`data:image/jpeg;base64,${data.frameBase64}`);
+            setDistanceResultImage(`data:image/jpeg;base64,${data.frameBase64}`);
         } catch (error) {
             console.error("동공 검출 실패:", error);
             return null;
         }
     };
 
-    const handleManualMeasurement = useCallback((limbusPxDiameter) => {
-        const limbusRealMM = LIMBUS_MM;
-        const distanceMM = calcMM(limbusRealMM, limbusPxDiameter);
-        console.log('[DEBUG] Manual measurement - limbus_px:', limbusPxDiameter, 'calculated distance:', distanceMM, 'mm');
-        setLimbusPX(limbusPxDiameter);
-        setDistance(Number(distanceMM.toFixed(0)));
-    }, [LIMBUS_MM, setDistance, setLimbusPX]);
+    const handleManualMeasurement = useCallback(
+        (limbusPxDiameter) => {
+            const limbusRealMM = LIMBUS_MM;
+            const distanceMM = calcMM(limbusRealMM, limbusPxDiameter);
+            console.log(
+                "[DEBUG] Manual measurement - limbus_px:",
+                limbusPxDiameter,
+                "calculated distance:",
+                distanceMM,
+                "mm",
+            );
+            setLimbusPX(limbusPxDiameter);
+            setDistance(Number(distanceMM.toFixed(0)));
+        },
+        [LIMBUS_MM, setDistance, setLimbusPX],
+    );
 
     useEffect(() => {
         if (wsClientRef.current) {
@@ -146,7 +151,7 @@ const DualLiveFrame = ({ onClose }) => {
         const updateButtonPosition = () => {
             if (crosshairRef.current) {
                 const rect = crosshairRef.current.getBoundingClientRect();
-                const centerY = rect.height / 2 - 2
+                const centerY = rect.height / 2 - 2;
                 setButtonTopPosition(centerY);
             }
         };
@@ -155,10 +160,10 @@ const DualLiveFrame = ({ onClose }) => {
         updateButtonPosition();
 
         // 윈도우 리사이즈 시 재계산
-        window.addEventListener('resize', updateButtonPosition);
+        window.addEventListener("resize", updateButtonPosition);
 
         return () => {
-            window.removeEventListener('resize', updateButtonPosition);
+            window.removeEventListener("resize", updateButtonPosition);
         };
     }, []);
 
@@ -167,17 +172,13 @@ const DualLiveFrame = ({ onClose }) => {
             <div className="relative w-full h-full bg-gray-100 rounded overflow-hidden flex flex-col">
                 {/* Header */}
                 <div className="flex items-center justify-end bg-white border-b border-gray-200">
-                    <button
-                        onClick={onClose}
-                        className="p-2 rounded-full transition-colors hover:bg-gray-100"
-                    >
+                    <button onClick={onClose} className="p-2 rounded-full transition-colors hover:bg-gray-100">
                         <X className="size-6 text-black" />
                     </button>
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 overflow-auto scrollbar-ultra-thin">
-
                     {/* Live Camera Feeds */}
                     <div className="grid grid-cols-2 gap-1 max-w-7xl mx-auto mt-1">
                         <EyeCanvas ref={odCanvasRef} side="OD" status={connectionStatus.OD}>
@@ -197,7 +198,7 @@ const DualLiveFrame = ({ onClose }) => {
                         <RippleButton
                             className="px-4 bg-green-500 hover:bg-green-600 text-white py-2 text-lg"
                             onClick={async () => {
-                                await getLimbusDetect();
+                                // await getLimbusDetect();
                                 await getOneFramePupilDetect();
                             }}
                         >
@@ -206,16 +207,12 @@ const DualLiveFrame = ({ onClose }) => {
                         </RippleButton>
                     </div>
 
-
                     {/* Distance Measurement Section */}
                     {distanceResultImage && (
                         <div className="flex flex-wrap justify-center mt-1 gap-1">
-
-
                             <div className="flex flex-row justify-center col-span-2">
-
                                 <div className="flex flex-col">
-                                    <div className="relative" style={{ width: '640px', height: `${FRAME_HEIGHT}px` }}>
+                                    <div className="relative" style={{ width: "640px" }}>
                                         {!showManualMode ? (
                                             <img
                                                 src={distanceResultImage}
@@ -239,12 +236,11 @@ const DualLiveFrame = ({ onClose }) => {
                                     </div>
 
                                     {/* Ruler */}
-                                    <div style={{ width: '640px' }}>
+                                    <div style={{ width: "640px" }}>
                                         <HorizontalRuler mm={DISTANCE} />
                                     </div>
                                 </div>
                             </div>
-
 
                             {/* Angle Measurement Section */}
                             <div className="flex flex-row justify-center">
@@ -256,15 +252,12 @@ const DualLiveFrame = ({ onClose }) => {
                                             className="h-[240px] object-contain"
                                         />
 
-
                                         <CameraAngleVisualizer angle={ANGLE} />
-
                                     </div>
                                 )}
                             </div>
                         </div>
                     )}
-
                 </div>
             </div>
         </div>

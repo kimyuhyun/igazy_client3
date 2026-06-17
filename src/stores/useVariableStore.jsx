@@ -47,9 +47,6 @@ const useVariableStore = create(
 
             kyhTemp: 0,
             setKyhTemp: (kyhTemp) => set({ kyhTemp }),
-
-            FRAME_HEIGHT: 480,
-            setFrameHeight: (FRAME_HEIGHT) => set({ FRAME_HEIGHT }),
         }),
         {
             name: "igazy3.0-global-storage",

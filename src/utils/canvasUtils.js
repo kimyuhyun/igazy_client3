@@ -18,6 +18,7 @@ export const drawBase64ToCanvas = (base64, canvas) => {
 
     img.onload = () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        // ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, img.width, canvas.height, 0, 0, canvas.width, canvas.height);
     };
 };
