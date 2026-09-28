@@ -19,7 +19,9 @@ const EyeCanvas = forwardRef(({ side, status, children }, ref) => {
                 <h2 className="text-xl font-semibold text-white">{side}</h2>
                 {badge && <span className={`text-xs ${badge.color}`}>{badge.text}</span>}
             </div>
-            <canvas ref={ref} className={`w-full bg-black aspect-[16/9]`} width={640} height={360} />
+            {/* 백킹 크기는 drawBase64ToCanvas가 프레임 해상도에 맞춰 잡는다.
+                여기에 640x360을 박아두면 720p 프레임이 절반 해상도로 표시된다. */}
+            <canvas ref={ref} className={`w-full bg-black aspect-[16/9]`} />
             {children}
         </div>
     );

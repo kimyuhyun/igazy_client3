@@ -3,7 +3,7 @@
 
 export const CALIB_CAM_ANGLE = 30.4;
 
-// cam_angle 30.4° 기준 캘리브레이션 테이블
+// pitch 30.4° 기준 캘리브레이션 테이블
 // { eye_angle(°): delta_x(mm) }
 const CALIB_TABLE_30_4 = {
     4: 0.457,
@@ -57,17 +57,17 @@ function interpolateFromTable(absDeltaMM) {
 
 /**
  * cos 보정 후 delta_x → eye_angle 계산
- * 측정 camAngle을 30.4° 기준으로 정규화
+ * 측정 pitch을 30.4° 기준으로 정규화
  * @param {number} deltaMM - 측정된 delta_x (mm, 부호 포함)
- * @param {number} camAngle - 측정 시 cam_angle (°)
+ * @param {number} pitch - 측정 시 pitch (°)
  * @returns {number} 안구 각도 (°, 부호 포함)
  */
-export function calcEyeAngle(deltaMM, camAngle) {
-    const camAngleRad = (camAngle * Math.PI) / 180;
+export function calcEyeAngle(deltaMM, pitch) {
+    const pitchRad = (pitch * Math.PI) / 180;
     const calibAngleRad = (CALIB_CAM_ANGLE * Math.PI) / 180;
 
-    // cos 보정: 현재 camAngle → 30.4° 기준 정규화
-    const correctedMM = (deltaMM * Math.cos(camAngleRad)) / Math.cos(calibAngleRad);
+    // cos 보정: 현재 pitch → 30.4° 기준 정규화
+    const correctedMM = (deltaMM * Math.cos(pitchRad)) / Math.cos(calibAngleRad);
 
     const absCorrected = Math.abs(correctedMM);
     const degrees = interpolateFromTable(absCorrected);

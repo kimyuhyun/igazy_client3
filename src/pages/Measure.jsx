@@ -19,7 +19,6 @@ export default function Measure() {
     const {
         IP,
         MAX_FRAME,
-        DISTANCE,
         ANGLE,
         PATIENT_NUM,
         PATIENT_NAME,
@@ -28,6 +27,10 @@ export default function Measure() {
         setPatientName,
         setPatientNum,
         setLimbusMM,
+        AXIAL_LENGTH,
+        setAxialLength,
+        ACD,
+        setAcd,
         setLimbusPX,
     } = useVariableStore();
     const { setLoading } = useLoadingStore();
@@ -170,7 +173,7 @@ export default function Measure() {
 
             // 저장 API 호출
             const { data } = await axios({
-                url: `${API_URL}/api/save?patient_num=${PATIENT_NUM}&patient_name=${PATIENT_NAME}&limbus_mm=${LIMBUS_MM}&limbus_px=${LIMBUS_PX}&distance=${DISTANCE}&angle=${ANGLE}`,
+                url: `${API_URL}/api/save?patient_num=${PATIENT_NUM}&patient_name=${PATIENT_NAME}&limbus_mm=${LIMBUS_MM}&limbus_px=${LIMBUS_PX}&angle=${ANGLE}&al=${AXIAL_LENGTH ?? ""}&acd=${ACD ?? ""}`,
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -281,7 +284,7 @@ export default function Measure() {
             setComponentKey((prev) => prev + 1);
 
             const { data } = await axios({
-                url: `${API_URL}/api/pupil`,
+                url: `${API_URL}/api/pupil?max_frame=${MAX_FRAME || 0}`,
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -447,6 +450,32 @@ export default function Measure() {
                             type="number"
                             value={LIMBUS_MM || ""}
                             onChange={(e) => setLimbusMM(e.target.value)}
+                            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                        />
+                    </div>
+
+                    {/* IOL Master 검사지 값. 회전반경 R = 0.5625 x AL - 0.847 x ACD 를 환자별로 산출한다.
+                        비우면 표준 눈(AL 24.0 / ACD 3.6)으로 계산된다. */}
+                    <div className="flex flex-col mt-4">
+                        <label className="mb-1 font-semibold text-gray-700 dark:text-gray-200">안축장 AL(mm)</label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            placeholder="예: 24.00 (비우면 표준값)"
+                            value={AXIAL_LENGTH || ""}
+                            onChange={(e) => setAxialLength(e.target.value)}
+                            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                        />
+                    </div>
+
+                    <div className="flex flex-col mt-4">
+                        <label className="mb-1 font-semibold text-gray-700 dark:text-gray-200">전방깊이 ACD(mm)</label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            placeholder="예: 3.60 (비우면 표준값)"
+                            value={ACD || ""}
+                            onChange={(e) => setAcd(e.target.value)}
                             className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-white dark:border-gray-600"
                         />
                     </div>

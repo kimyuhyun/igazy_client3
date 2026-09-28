@@ -188,6 +188,46 @@ export const smoothData = (data) => {
 };
 
 /**
+ * 값 이동(보간·시프트) 없이 급격히 튀는 프레임만 직전 정상값으로 치환하는 디스파이크.
+ * - 직전 정상값과의 차이가 maxDelta를 넘으면 스파이크로 보고 직전 값으로 대체
+ * - 단, maxHold 프레임을 연속으로 넘어서면 실제 레벨 변화(예: 셔터 전환에 따른 동공 변화)로
+ *   판단하고 새 값을 수용 → 진짜 변화까지 눌러버리는 것을 방지
+ * - 범위 밖 값(≤0, >validMax)은 검출 실패로 보고 무조건 직전 값으로 대체
+ * @param {number[]} data - 원시 데이터 (mm)
+ * @param {number} maxDelta - 프레임 간 허용 변화량 (기본 0.5mm)
+ * @param {number} maxHold - 이 프레임 수를 넘겨 지속되면 실제 변화로 수용 (기본 3)
+ * @param {number} validMax - 유효 상한 (기본 8mm)
+ */
+export const despikeHold = (data, maxDelta = 0.5, maxHold = 3, validMax = 8) => {
+    const result = [...data];
+    let lastGood = null;
+    let heldCount = 0;
+
+    for (let i = 0; i < result.length; i++) {
+        const v = result[i];
+        const invalid = v === null || v === undefined || isNaN(v) || v <= 0 || v > validMax;
+
+        if (invalid) {
+            result[i] = lastGood !== null ? lastGood : 4;
+            continue;
+        }
+
+        if (lastGood !== null && Math.abs(v - lastGood) > maxDelta) {
+            heldCount++;
+            if (heldCount <= maxHold) {
+                result[i] = lastGood;
+                continue;
+            }
+            // maxHold 초과 지속 → 실제 레벨 변화로 수용
+        }
+
+        lastGood = v;
+        heldCount = 0;
+    }
+    return result;
+};
+
+/**
  * 차트 생성을 위한 데이터 전처리 (스파이크 제거 버전)
  * 처리 순서: 1) Z-score 스파이크 제거 → 2) NaN 선형 보간 → 3) Median Filter 마무리
  * @param {Object} inputData - 원시 안구 추적 데이터 {left: {x: [], y: []}, right: {x: [], y: []}}
@@ -225,6 +265,38 @@ export const prepareVisualizationData = (inputData) => {
             data = interpolateNaN(data);
 
             result[eye][axis] = data;
+        }
+    }
+
+    return result;
+};
+
+/**
+ * 계산(중앙값 분석·수동 포인트)용 데이터 전처리
+ * 원본 값 보존이 목적: 계단형 신호(saccade)와 구간 중앙값을 왜곡하는 점프 제거·보간을 쓰지 않고,
+ * 에지를 보존하는 5프레임 미디언 필터만 적용해 1~2프레임짜리 추적 튐만 걸러낸다.
+ * 그래프 표시용 평활화는 prepareVisualizationData를 그대로 사용할 것.
+ */
+export const prepareAnalysisData = (inputData) => {
+    const rawData = {
+        [LEFT]: {
+            [X_AXIS]: [...(inputData.left?.x || [])],
+            [Y_AXIS]: [...(inputData.left?.y || [])],
+        },
+        [RIGHT]: {
+            [X_AXIS]: [...(inputData.right?.x || [])],
+            [Y_AXIS]: [...(inputData.right?.y || [])],
+        },
+    };
+
+    const result = {
+        [LEFT]: { [X_AXIS]: [], [Y_AXIS]: [] },
+        [RIGHT]: { [X_AXIS]: [], [Y_AXIS]: [] },
+    };
+
+    for (const eye of [LEFT, RIGHT]) {
+        for (const axis of [X_AXIS, Y_AXIS]) {
+            result[eye][axis] = medianFilter(rawData[eye][axis], 5);
         }
     }
 

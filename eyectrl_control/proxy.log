@@ -1,0 +1,17 @@
+Eyectrl proxy on 127.0.0.1:9999
+[proxy] "GET /ping HTTP/1.1" 200 -
+[proxy] "GET /reach HTTP/1.1" 200 -
+[proxy] "POST /cmd HTTP/1.1" 200 -
+[proxy] "POST /cmd HTTP/1.1" 200 -
+[proxy] "POST /cmd HTTP/1.1" 200 -
+[proxy] "POST /cmd HTTP/1.1" 200 -
+[proxy] "POST /cmd HTTP/1.1" 200 -
+[proxy] "POST /cmd HTTP/1.1" 200 -
+[proxy] "POST /cmd HTTP/1.1" 200 -
+[proxy] "POST /cmd HTTP/1.1" 200 -
+[proxy] "POST /cmd HTTP/1.1" 200 -
+[proxy] "POST /cmd HTTP/1.1" 200 -
+[proxy] "POST /cmd HTTP/1.1" 200 -
+[proxy] "POST /cmd HTTP/1.1" 200 -
+[proxy] "POST /cmd HTTP/1.1" 200 -
+[proxy] "POST /cmd HTTP/1.1" 200 -

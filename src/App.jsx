@@ -7,9 +7,7 @@ import Video from "./pages/Video";
 import Config from "./pages/Config";
 import LoadingSpinner from "./components/LoadingSpinner";
 import PDReport from "./pages/PDReport";
-import KyhTest from "./pages/KyhTest";
 import XaxisCali from "./pages/XaxisCali";
-import LimbusTest from "./pages/LimbusTest";
 
 function App() {
     return (
@@ -21,10 +19,8 @@ function App() {
                     <Route path="/video" element={<Video />} />
                     <Route path="/config" element={<Config />} />
                     <Route path="/pd_report" element={<PDReport />} />
-                    <Route path="/limbus_test" element={<LimbusTest />} />
 
                     <Route path="/x_axis_cali" element={<XaxisCali />} />
-                    <Route path="/kyh_test" element={<KyhTest />} />
                 </Routes>
             </BrowserRouter>
             <Toaster

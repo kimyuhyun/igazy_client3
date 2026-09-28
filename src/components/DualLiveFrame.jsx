@@ -1,7 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
-import HorizontalRuler from "../components/HorizontalRuler";
-import ManualDistanceMeasurement from "./ManualDistanceMeasurement";
-import ManualToggleSwitch from "../components/ManualToggleSwitch";
+import LimbusLineMeasure from "./LimbusLineMeasure";
+import MeasurementScale from "../components/MeasurementScale";
 import CameraAngleVisualizer from "../components/CameraAngleVisualizer";
 import CenterCrosshair from "../components/CenterCrosshair";
 import useVariableStore from "../stores/useVariableStore";
@@ -10,12 +9,11 @@ import toast from "react-hot-toast";
 import axios from "axios";
 import { RulerIcon, X } from "lucide-react";
 import EyeWsClient from "../utils/eyeWsClient";
-import { calcMM } from "../utils/calcPxToMm";
 import { drawBase64ToCanvas } from "../utils/canvasUtils";
 import EyeCanvas from "./EyeCanvas";
 
 const DualLiveFrame = ({ onClose }) => {
-    const { IP, LIMBUS_MM, DISTANCE, ANGLE, setAngle, setDistance, setLimbusPX } = useVariableStore();
+    const { IP, LIMBUS_MM, LIMBUS_PX, ANGLE, setAngle, setLimbusPX } = useVariableStore();
 
     const API_URL = `http://${IP}:8080`;
     const SOCKET_URL = `ws://${IP}:3000`;
@@ -27,45 +25,9 @@ const DualLiveFrame = ({ onClose }) => {
     const osCanvasRef = useRef(null);
     const crosshairRef = useRef(null);
 
-    const [showManualMode, setShowManualMode] = useState(true);
-    const [distanceResultImage, setDistanceResultImage] = useState(null);
-    const [angleResultImage, setAngleResultImage] = useState(null);
+    const [pupilCenter, setPupilCenter] = useState(null);
+    const [limbusFrame, setLimbusFrame] = useState(null);
     const [buttonTopPosition, setButtonTopPosition] = useState(180);
-
-    // const getLimbusDetect = async () => {
-    //     try {
-    //         console.log('[DEBUG] Calling API:', `${API_URL}/api/limbus_detect`);
-    //         const { data } = await axios({
-    //             url: `${API_URL}/api/limbus_detect`,
-    //             method: "GET",
-    //             headers: {
-    //                 "Content-Type": "application/json",
-    //             },
-    //         });
-
-    //         console.log('[DEBUG] API Response:', data);
-
-    //         if (data.error) {
-    //             console.error('[ERROR] Server returned error:', data.error);
-    //             toast.error("윤부를 찾을 수 없습니다.");
-    //             if (odCanvasRef.current) {
-    //                 const base64 = odCanvasRef.current.toDataURL("image/jpeg").split(",")[1];
-    //                 setDistanceResultImage(`data:image/jpeg;base64,${base64}`);
-    //             }
-    //         } else {
-    //             const limbusRealMM = LIMBUS_MM;
-    //             const limbusPxDiameter = data.pxDiameter;
-    //             const distanceMM = calcMM(limbusRealMM, limbusPxDiameter);
-    //             console.log('[DEBUG] Auto measurement - limbus_px:', limbusPxDiameter, 'calculated distance:', distanceMM, 'mm');
-    //             setLimbusPX(limbusPxDiameter);
-    //             setDistance(Number(distanceMM.toFixed(0)));
-    //             setDistanceResultImage(`data:image/jpeg;base64,${data.frameBase64}`);
-    //         }
-    //     } catch (error) {
-    //         console.error('[ERROR] API call failed:', error);
-    //         toast.error(error.response?.data?.error || error.message || "API 호출 실패");
-    //     }
-    // };
 
     const getOneFramePupilDetect = async () => {
         try {
@@ -80,9 +42,9 @@ const DualLiveFrame = ({ onClose }) => {
 
             console.log(data);
 
-            setAngle(data.camAngle);
-            setAngleResultImage(`data:image/jpeg;base64,${data.frameBase64}`);
-            setDistanceResultImage(`data:image/jpeg;base64,${data.frameBase64}`);
+            setAngle(data.pitch);
+            setPupilCenter(data.x != null && data.y != null ? { x: data.x, y: data.y } : null);
+            setLimbusFrame(`data:image/jpeg;base64,${data.frameBase64}`);
         } catch (error) {
             console.error("동공 검출 실패:", error);
             return null;
@@ -91,19 +53,10 @@ const DualLiveFrame = ({ onClose }) => {
 
     const handleManualMeasurement = useCallback(
         (limbusPxDiameter) => {
-            const limbusRealMM = LIMBUS_MM;
-            const distanceMM = calcMM(limbusRealMM, limbusPxDiameter);
-            console.log(
-                "[DEBUG] Manual measurement - limbus_px:",
-                limbusPxDiameter,
-                "calculated distance:",
-                distanceMM,
-                "mm",
-            );
             setLimbusPX(limbusPxDiameter);
-            setDistance(Number(distanceMM.toFixed(0)));
+            toast.success(`윤부 ${limbusPxDiameter.toFixed(1)}px 저장`);
         },
-        [LIMBUS_MM, setDistance, setLimbusPX],
+        [setLimbusPX],
     );
 
     useEffect(() => {
@@ -207,54 +160,22 @@ const DualLiveFrame = ({ onClose }) => {
                         </RippleButton>
                     </div>
 
-                    {/* Distance Measurement Section */}
-                    {distanceResultImage && (
-                        <div className="flex flex-wrap justify-center mt-1 gap-1">
-                            <div className="flex flex-row justify-center col-span-2">
-                                <div className="flex flex-col">
-                                    <div className="relative" style={{ width: "640px" }}>
-                                        {!showManualMode ? (
-                                            <img
-                                                src={distanceResultImage}
-                                                alt="Distance Measurement"
-                                                className="w-full h-full object-contain"
-                                            />
-                                        ) : (
-                                            <ManualDistanceMeasurement
-                                                imageSource={distanceResultImage}
-                                                onMeasurementComplete={handleManualMeasurement}
-                                            />
-                                        )}
+                    {/* 윤부 측정 */}
+                    {limbusFrame && (
+                        // 캔버스와 아래 2단 그리드를 한 블록으로 묶어 함께 가운데 정렬
+                        <div className="mt-1 w-fit max-w-full mx-auto">
+                            {/* 윤부 측정 — 캔버스가 원본 해상도와 1:1이라 폭을 고정하지 않는다 */}
+                            <LimbusLineMeasure
+                                imageSource={limbusFrame}
+                                pupilCenter={pupilCenter}
+                                initialDiameter={parseFloat(LIMBUS_PX) > 10 ? parseFloat(LIMBUS_PX) : null}
+                                onComplete={handleManualMeasurement}
+                            />
 
-                                        {/* Toggle Switch */}
-                                        <div className="absolute bottom-2 left-2 z-10">
-                                            <ManualToggleSwitch
-                                                checked={showManualMode}
-                                                onChange={(e) => setShowManualMode(e.target.checked)}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Ruler */}
-                                    <div style={{ width: "640px" }}>
-                                        <HorizontalRuler mm={DISTANCE} />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Angle Measurement Section */}
-                            <div className="flex flex-row justify-center">
-                                {angleResultImage && (
-                                    <div className="flex flex-col">
-                                        <img
-                                            src={angleResultImage}
-                                            alt="Angle Measurement"
-                                            className="h-[240px] object-contain"
-                                        />
-
-                                        <CameraAngleVisualizer angle={ANGLE} />
-                                    </div>
-                                )}
+                            {/* 스케일 · 각도 — 캔버스 아래 2단 (좁은 화면에서는 1단으로 접힘) */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-3 items-start">
+                                <MeasurementScale limbusPx={LIMBUS_PX} limbusMM={LIMBUS_MM} />
+                                <CameraAngleVisualizer angle={ANGLE} />
                             </div>
                         </div>
                     )}

@@ -27,8 +27,16 @@ const useVariableStore = create(
             LIMBUS_PX: "",
             setLimbusPX: (LIMBUS_PX) => set({ LIMBUS_PX }),
 
-            DISTANCE: 0,
-            setDistance: (DISTANCE) => set({ DISTANCE }),
+            // IOL Master 검사지 값. 안구 회전반경 R을 환자별로 산출하는 데 쓴다.
+            //   R = 0.5625 x AL - 0.847 x ACD
+            // (0.5625 = 회전중심이 각막에서 안축장의 몇 배 뒤에 있는지,
+            //  0.847 = 각막 굴절로 동공이 실제보다 앞에 보이는 비율)
+            // 비어 있으면 표준 눈(AL 24.0 / ACD 3.6 -> R 10.45mm)으로 본다.
+            AXIAL_LENGTH: "",
+            setAxialLength: (AXIAL_LENGTH) => set({ AXIAL_LENGTH }),
+
+            ACD: "",
+            setAcd: (ACD) => set({ ACD }),
 
             ANGLE: 0,
             setAngle: (ANGLE) => set({ ANGLE }),

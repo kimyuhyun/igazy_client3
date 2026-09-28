@@ -126,6 +126,9 @@ export const saveZipToDB = async (filePath, fileName, zipData) => {
                     angle: zipData.angle,
                     limbus_px: zipData.limbus_px,
                     limbus_mm: zipData.limbus_mm,
+                    // IOL Master 값 (R 방식 계산용) — 빠뜨리면 캐시로 열 때 사라진다
+                    axial_length: zipData.axial_length,
+                    acd: zipData.acd,
                     od: zipData.od,
                     os: zipData.os,
                     odImageCount: zipData.odImages.length,
@@ -221,6 +224,71 @@ export const getZipFromDB = async (filePath) => {
         };
 
         request.onerror = () => reject(request.error);
+    });
+};
+
+/**
+ * 캐시된 ZIP의 메타데이터만 갈아끼운다 (이미지는 그대로 둔다).
+ *
+ * 환자정보를 수정해도 이미지는 한 바이트도 바뀌지 않는다. 예전에는 캐시를 통째로
+ * 지워서 37~110MB를 다시 내려받아야 했는데, 메타만 고치면 네트워크가 필요 없다.
+ *
+ * 파일명이 바뀌면 키(filePath)도 바뀌므로 청크의 id/filePath까지 옮긴다
+ * (이것도 브라우저 안에서만 일어나고 다운로드는 없다).
+ *
+ * @returns {Promise<boolean>} 캐시가 없어서 아무것도 안 했으면 false
+ */
+export const updateZipMetaInDB = async (oldFilePath, newFilePath, newFileName, meta) => {
+    const db = await initDB();
+
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME, CHUNK_STORE_NAME], "readwrite");
+        const store = transaction.objectStore(STORE_NAME);
+        const chunkStore = transaction.objectStore(CHUNK_STORE_NAME);
+
+        const getRequest = store.get(oldFilePath);
+        getRequest.onerror = () => reject(getRequest.error);
+        getRequest.onsuccess = () => {
+            const row = getRequest.result;
+            if (!row) {
+                resolve(false);
+                return;
+            }
+
+            const renamed = newFilePath !== oldFilePath;
+            const next = {
+                ...row,
+                filePath: newFilePath,
+                fileName: newFileName || row.fileName,
+                zipData: { ...row.zipData, ...meta },
+                lastAccessed: Date.now(),
+            };
+
+            if (!renamed) {
+                store.put(next);
+            } else {
+                store.put(next);
+                store.delete(oldFilePath);
+                // 청크 id는 `${filePath}_od_0` 꼴이라 이름이 바뀌면 같이 옮겨야 한다
+                const cursorRequest = chunkStore.index("filePath").openCursor(IDBKeyRange.only(oldFilePath));
+                cursorRequest.onerror = () => reject(cursorRequest.error);
+                cursorRequest.onsuccess = (event) => {
+                    const cursor = event.target.result;
+                    if (!cursor) return;
+                    const chunk = cursor.value;
+                    chunkStore.delete(chunk.id);
+                    chunkStore.put({
+                        ...chunk,
+                        id: `${newFilePath}_${chunk.type}_${chunk.chunkIndex}`,
+                        filePath: newFilePath,
+                    });
+                    cursor.continue();
+                };
+            }
+
+            transaction.oncomplete = () => resolve(true);
+            transaction.onerror = () => reject(transaction.error);
+        };
     });
 };
 

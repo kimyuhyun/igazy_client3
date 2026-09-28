@@ -9,6 +9,9 @@ export default function Popup({ children, width = "6xl", height = "95", onClose 
         "4xl": "max-w-4xl",
         "5xl": "max-w-5xl",
         "6xl": "max-w-6xl",
+        // 윤부 측정 캔버스가 원본 해상도(1280) 1:1이라 그만한 폭이 필요하다
+        "7xl": "max-w-7xl",
+        full: "max-w-full",
     };
 
     // dvh 사용 (모바일 브라우저 UI 고려), vh fallback
@@ -23,9 +26,9 @@ export default function Popup({ children, width = "6xl", height = "95", onClose 
             <div
                 className={`
                     relative w-full ${widthClassMap[width] || "max-w-xl"}
-                    m-4 ${heightClass}
+                    ${width === "full" ? "h-dvh" : `m-4 ${heightClass} rounded-lg`}
                     dark:bg-stone-800 bg-white
-                    rounded-lg shadow-xl
+                    shadow-xl
                     transform transition-all overflow-hidden flex flex-col
                 `}
             >

@@ -39,47 +39,36 @@
 //     },
 // };
 
+/**
+ * 안구각도(°) → delta_x(mm, 절대값) 룩업테이블.
+ *
+ * 2026-07-31 재구축: pitch 0~-8° 범위 7개 세트(0.1/-2.0/-3.3/-4.5재측정/-5.5/-6.6/-8.0)의
+ * 안구각도별 "중앙값" 단일 테이블. 실측 결과 이 범위에서 pitch 의존성(~1.5%)이
+ * 세션 간 노이즈(±3~11%)보다 작아, 세트별 보간 대신 중앙값 통합이 더 정확함
+ * (중앙값 = 세션 스케일 편향·이상치 자동 제거).
+ * 재생성: 뷰어 X축 캘리브레이션 "JSON 다운로드" 후
+ *   node eyectrl_control/make_median_table.mjs <json>
+ */
+// 안구모형 실측 캘리브레이션 표 (2026-08-10, 720p)
+//   키   = 측정 시 피칭값(°)
+//   값   = { 안구 각도(°): 동공 변위(mm) }
+//   변위 = |Δx_px| x (윤부_mm / 윤부_px) — 윤부로 나누므로 카메라 거리·배율이 약분된다
+//
+// 행별 근거
+//   -9.0  2패스 평균. 블라인드 5회 검증 RMS 0.22° (0.39 PD) — 품질 최상
+//   -7.5  1패스
+//   -2.1  양방향(±40°) 좌우 평균. 기준점(0°) 오차가 좌우에 반대 부호로 실리므로
+//         평균하면 상쇄된다 (20°에서 0.18mm 차이가 사라짐)
+//
+// 제외한 행
+//   -8.9  카메라 과열로 프레임 정지 구간이 섞여 RMS 1.17°. -7.5와 -9.0 사이라
+//         빼도 피칭 범위 손실이 없다.
 const CALIB_TABLES = {
-    26.8: {
-        4: 0.536,
-        8: 1.112,
-        12: 1.648,
-        16: 2.616,
-        20: 2.909,
-        24: 3.202,
-        28: 3.687,
-        32: 4.109,
-        36: 4.618,
-        40: 5.026,
-    },
-    29.4: {
-        4: 0.528,
-        8: 1.101,
-        12: 1.657,
-        16: 2.184,
-        20: 2.7,
-        24: 3.224,
-        28: 3.679,
-        32: 4.159,
-        36: 4.615,
-        40: 5.073,
-    },
-    30.5: {
-        4: 0.52,
-        8: 1.083,
-        12: 1.652,
-        16: 2.19,
-        20: 2.72,
-        24: 3.225,
-        28: 3.699,
-        32: 4.198,
-        36: 4.624,
-        40: 5.063,
-    },
+    "-9.0": { 4: 0.5791, 8: 1.1353, 12: 1.6525, 16: 2.3361, 20: 2.8699, 24: 3.2649, 28: 3.7491, 32: 4.2201, 36: 4.6479, 40: 5.1732 },
+    "-7.5": { 4: 0.5712, 8: 1.1684, 12: 1.7301, 16: 2.2585, 20: 2.7803, 24: 3.2848, 28: 3.759, 32: 4.2438, 36: 4.6777, 40: 5.1966 },
+    "-2.1": { 4: 0.567, 8: 1.1207, 12: 1.605, 16: 2.2331, 20: 2.7546, 24: 3.2663, 28: 3.808, 32: 4.2902, 36: 4.7963, 40: 5.3127 },
 };
 
-// export const CORRECTION_FACTOR = 1;
-export const CORRECTION_FACTOR = 0.61;
 
 // 단일 테이블에서 선형보간
 function interpolateFromTable(table, absDelta) {
@@ -113,37 +102,38 @@ function interpolateFromTable(table, absDelta) {
     return 0;
 }
 
-// camAngle에 가장 가까운 두 테이블 사이 보간
-export function interpolateEyeAngle(deltaMM, camAngle) {
-    // console.log(deltaMM, camAngle);
-    
+// pitch에 가장 가까운 두 테이블 사이 보간
+export function interpolateEyeAngle(deltaMM, pitch) {
     const absDelta = Math.abs(deltaMM);
-    const availableAngles = Object.keys(CALIB_TABLES)
-        .map(parseFloat)
-        .sort((a, b) => a - b);
 
-    // camAngle이 테이블 범위 이하 → 가장 작은 테이블 사용
-    if (camAngle <= availableAngles[0]) {
-        return interpolateFromTable(CALIB_TABLES[availableAngles[0]], absDelta);
-    }
+    // 원본 키 문자열을 유지한다. parseFloat 결과로 조회하면 "-9.0" 행을
+    // CALIB_TABLES[-9] 로 찾아 undefined가 된다.
+    const rows = Object.keys(CALIB_TABLES)
+        .map((k) => [parseFloat(k), k])
+        .filter(([n]) => Number.isFinite(n))
+        .sort((a, b) => a[0] - b[0]);
+    if (rows.length === 0) return 0;
 
-    // camAngle이 테이블 범위 이상 → 가장 큰 테이블 사용
-    if (camAngle >= availableAngles[availableAngles.length - 1]) {
-        return interpolateFromTable(CALIB_TABLES[availableAngles[availableAngles.length - 1]], absDelta);
-    }
+    const p = parseFloat(pitch);
+    const fromRow = (row) => interpolateFromTable(CALIB_TABLES[row[1]], absDelta);
 
-    // 두 테이블 사이 보간
-    for (let i = 0; i < availableAngles.length - 1; i++) {
-        const a1 = availableAngles[i];
-        const a2 = availableAngles[i + 1];
+    if (!Number.isFinite(p) || rows.length === 1) return fromRow(rows[0]);
 
-        if (camAngle >= a1 && camAngle <= a2) {
-            const angle1 = interpolateFromTable(CALIB_TABLES[a1], absDelta);
-            const angle2 = interpolateFromTable(CALIB_TABLES[a2], absDelta);
-            const ratio = (camAngle - a1) / (a2 - a1);
-            return angle1 + ratio * (angle2 - angle1);
+    // 표 범위 밖이면 가장 가까운 행을 쓴다
+    if (p <= rows[0][0]) return fromRow(rows[0]);
+    const last = rows[rows.length - 1];
+    if (p >= last[0]) return fromRow(last);
+
+    // 두 행 사이는 각도 결과를 선형보간
+    for (let i = 0; i < rows.length - 1; i++) {
+        const [n1, k1] = rows[i];
+        const [n2, k2] = rows[i + 1];
+        if (p >= n1 && p <= n2) {
+            const a1 = interpolateFromTable(CALIB_TABLES[k1], absDelta);
+            const a2 = interpolateFromTable(CALIB_TABLES[k2], absDelta);
+            return a1 + ((p - n1) / (n2 - n1)) * (a2 - a1);
         }
     }
-
     return 0;
 }
+

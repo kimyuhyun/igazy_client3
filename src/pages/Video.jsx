@@ -24,13 +24,15 @@ import {
     getAllZipsFromDB,
     deleteZipFromDB,
     clearAllCache,
+    updateZipMetaInDB,
 } from "../utils/indexedDB";
 import { transformFileData } from "../utils/transformFileData";
 import { Database, Trash2, Edit2, Search } from "lucide-react";
 import RippleButton from "../components/RippleButton";
 
 export default function Video() {
-    const { IP, setPatientNum, setPatientName, setAngle, setDistance, setLimbusPX, setLimbusMM } = useVariableStore();
+    const { IP, setPatientNum, setPatientName, setAngle, setLimbusPX, setLimbusMM, setAxialLength, setAcd } =
+        useVariableStore();
     const { setLoading } = useLoadingStore();
     const API_URL = `http://${IP}:8080`;
 
@@ -187,9 +189,27 @@ export default function Video() {
                 setPatientNum(cachedData.patient_num);
                 setPatientName(cachedData.patient_name);
                 setAngle(cachedData.angle);
-                setDistance(cachedData.distance);
                 setLimbusPX(cachedData.limbus_px);
                 setLimbusMM(cachedData.limbus_mm);
+
+                // 안 넣으면 결과보기(PDReport)로 al/acd가 빈 값으로 넘어가 R 방식이 표준 눈으로 계산된다.
+                // AL/ACD를 캐시에 담기 전에 저장된 파일은 이 값이 아예 없으므로 ZIP에서 한 번 읽어 메운다.
+                let al = cachedData.axial_length;
+                let ac = cachedData.acd;
+                if (al === undefined || ac === undefined) {
+                    try {
+                        const { data } = await axios.get(`${API_URL}/api/zip/meta`, { params: { zipPath: filePath } });
+                        if (!data?.error) {
+                            al = data.axial_length ?? "";
+                            ac = data.acd ?? "";
+                            await updateZipMetaInDB(filePath, filePath, null, { axial_length: al, acd: ac });
+                        }
+                    } catch (error) {
+                        console.error("Failed to backfill AL/ACD:", error);
+                    }
+                }
+                setAxialLength(al ?? "");
+                setAcd(ac ?? "");
 
                 setLoading(false);
                 return;
@@ -307,6 +327,9 @@ export default function Video() {
                 angle: results.angle,
                 limbus_px: results.limbus_px,
                 limbus_mm: results.limbus_mm,
+                // IOL Master 값 (R 방식 계산용) — 여기서 빠뜨리면 캐시·스토어·PDReport까지 전부 빈 값이 된다
+                axial_length: results.axial_length,
+                acd: results.acd,
                 od: odData,
                 os: osData,
                 odImages: odImagesList,
@@ -336,9 +359,10 @@ export default function Video() {
             setPatientNum(zipData.patient_num);
             setPatientName(zipData.patient_name);
             setAngle(zipData.angle);
-            setDistance(zipData.distance);
             setLimbusPX(zipData.limbus_px);
             setLimbusMM(zipData.limbus_mm);
+            setAxialLength(zipData.axial_length ?? "");
+            setAcd(zipData.acd ?? "");
 
             // 9. 상태 업데이트
             await updateStorageInfo();
@@ -425,23 +449,35 @@ export default function Video() {
         }
     };
 
-    // 환자 정보 수정 모달 열기 (캐시에서 limbus 데이터 로드)
+    // 환자 정보 수정 모달 열기.
+    // 값의 원본은 ZIP 안 results.json이다. 브라우저 캐시(IndexedDB)는 사본일 뿐이라
+    // 캐시를 지우면 값이 사라진다 -> 서버에서 먼저 읽고, 실패할 때만 캐시로 내려간다.
     const handleEditPatient = async (row) => {
+        const fill = (src) =>
+            setEditingFile({
+                ...row,
+                limbus_mm: src?.limbus_mm || "",
+                limbus_px: src?.limbus_px ? parseFloat(src.limbus_px).toFixed(1) : "",
+                axial_length: src?.axial_length || "",
+                acd: src?.acd || "",
+            });
+
+        try {
+            const { data } = await axios.get(`${API_URL}/api/zip/meta`, {
+                params: { zipPath: row.filePath },
+            });
+            if (!data?.error) return fill(data);
+        } catch (error) {
+            console.error("Failed to load ZIP meta:", error);
+        }
+
         try {
             const cachedData = await getZipFromDB(row.filePath);
-            if (cachedData) {
-                setEditingFile({
-                    ...row,
-                    limbus_mm: cachedData.limbus_mm || "",
-                    limbus_px: cachedData.limbus_px ? parseFloat(cachedData.limbus_px).toFixed(1) : "",
-                });
-            } else {
-                setEditingFile({ ...row, limbus_mm: "", limbus_px: "" });
-                toast.error("캐시된 데이터가 없습니다. 먼저 파일을 열어주세요.", { id: "error" });
-            }
+            fill(cachedData);
+            if (!cachedData) toast.error("저장된 환자정보를 읽지 못했습니다.", { id: "error" });
         } catch (error) {
             console.error("Failed to load limbus data:", error);
-            setEditingFile({ ...row, limbus_mm: "", limbus_px: "" });
+            fill(null);
         }
     };
 

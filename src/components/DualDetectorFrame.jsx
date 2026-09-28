@@ -6,7 +6,7 @@ import { drawBase64ToCanvas } from "../utils/canvasUtils";
 import EyeCanvas from "./EyeCanvas";
 
 const DualDetectorFrame = forwardRef(({ onEnded, onOdResults, onOsResults }, ref) => {
-    const { IP, MAX_FRAME, DISTANCE, ANGLE, setDistance, setAngle } = useVariableStore();
+    const { IP, MAX_FRAME, ANGLE, setAngle } = useVariableStore();
 
     const API_URL = `http://${IP}:8080`;
     const SOCKET_URL = `ws://${IP}:3000`;
@@ -42,21 +42,21 @@ const DualDetectorFrame = forwardRef(({ onEnded, onOdResults, onOsResults }, ref
 
         // Pupil LIVE frame (OD / OS)
         const offLive = wsClient.onLive(({ data }) => {
-            const { frameIndex, frameBase64, eye, x, y, camAngle, isHide, majorR, minorR } = data;
+            const { frameIndex, frameBase64, eye, x, y, pitch, roll, yaw, isHide, majorR, minorR, tiltDir } = data;
 
             if (!frameBufferRef.current[frameIndex]) {
                 frameBufferRef.current[frameIndex] = {};
             }
 
             if (eye === "OD") {
-                onOdResults({ frame_index: frameIndex, x, y, is_hide: isHide, major_r: majorR, minor_r: minorR });
+                onOdResults({ frame_index: frameIndex, x, y, is_hide: isHide, major_r: majorR, minor_r: minorR, pitch: pitch, roll: roll, yaw: yaw, tilt_dir: tiltDir });
                 drawBase64ToCanvas(frameBase64, odCanvasRef.current);
                 setConnectionStatus((prev) => ({ ...prev, OD: "connected" }));
                 frameBufferRef.current[frameIndex].odFrame = frameBase64;
             }
 
             if (eye === "OS") {
-                onOsResults({ frame_index: frameIndex, x, y, is_hide: isHide, major_r: majorR, minor_r: minorR });
+                onOsResults({ frame_index: frameIndex, x, y, is_hide: isHide, major_r: majorR, minor_r: minorR, pitch: pitch, roll: roll, yaw: yaw, tilt_dir: tiltDir });
                 drawBase64ToCanvas(frameBase64, osCanvasRef.current);
                 setConnectionStatus((prev) => ({ ...prev, OS: "connected" }));
                 frameBufferRef.current[frameIndex].osFrame = frameBase64;

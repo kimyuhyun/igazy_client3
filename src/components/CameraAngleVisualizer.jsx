@@ -9,7 +9,7 @@ const CameraAngleVisualizer = React.memo(({ angle = 0 }) => {
     const minDimension = Math.min(width, height);
     const radius = minDimension * 0.8;
     const centerX = width / 2;
-    const centerY = height * 0.1;
+    const centerY = height * 0.9; // 중심을 아래로 → 위쪽으로 열린 반원
 
     // 각도기 눈금 생성 (180도에서 시작해서 0도로)
     const renderProtractorTicks = () => {
@@ -20,16 +20,16 @@ const CameraAngleVisualizer = React.memo(({ angle = 0 }) => {
             // 각도를 반전 (180 - angle)
             const displayAngle = 180 - angle;
             const x1 = centerX + Math.cos((angle * Math.PI) / 180) * (radius - 10);
-            const y1 = centerY + Math.sin((angle * Math.PI) / 180) * (radius - 10);
+            const y1 = centerY - Math.sin((angle * Math.PI) / 180) * (radius - 10);
             const x2 = centerX + Math.cos((angle * Math.PI) / 180) * radius;
-            const y2 = centerY + Math.sin((angle * Math.PI) / 180) * radius;
+            const y2 = centerY - Math.sin((angle * Math.PI) / 180) * radius;
 
             ticks.push(
                 <g key={`major-${angle}`}>
                     <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#1F2937" strokeWidth="2" />
                     <text
                         x={centerX + Math.cos((angle * Math.PI) / 180) * (radius + 15)}
-                        y={centerY + Math.sin((angle * Math.PI) / 180) * (radius + 15)}
+                        y={centerY - Math.sin((angle * Math.PI) / 180) * (radius + 15)}
                         fontSize="12"
                         fill="#1F2937"
                         fontWeight="bold"
@@ -45,9 +45,9 @@ const CameraAngleVisualizer = React.memo(({ angle = 0 }) => {
         // 보조 눈금 (5도 간격)
         for (let angle = 5; angle < 180; angle += 10) {
             const x1 = centerX + Math.cos((angle * Math.PI) / 180) * (radius - 6);
-            const y1 = centerY + Math.sin((angle * Math.PI) / 180) * (radius - 6);
+            const y1 = centerY - Math.sin((angle * Math.PI) / 180) * (radius - 6);
             const x2 = centerX + Math.cos((angle * Math.PI) / 180) * radius;
-            const y2 = centerY + Math.sin((angle * Math.PI) / 180) * radius;
+            const y2 = centerY - Math.sin((angle * Math.PI) / 180) * radius;
 
             ticks.push(
                 <line key={`minor-${angle}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#6B7280" strokeWidth="1.5" />
@@ -61,7 +61,8 @@ const CameraAngleVisualizer = React.memo(({ angle = 0 }) => {
     const invertedAngle = 180 - angle;
     const needleLength = radius - 25;
     const needleX = centerX + Math.cos((invertedAngle * Math.PI) / 180) * needleLength;
-    const needleY = centerY + Math.sin((invertedAngle * Math.PI) / 180) * needleLength;
+    // 세로 성분은 항상 위로(절대값) → 음수 각도에서도 바늘이 위쪽 반원(눈 쪽)을 향함
+    const needleY = centerY - Math.abs(Math.sin((invertedAngle * Math.PI) / 180)) * needleLength;
 
     return (
         <div className="w-full h-full bg-gradient-to-b from-amber-50 to-amber-100 border border-gray-200">
@@ -69,7 +70,7 @@ const CameraAngleVisualizer = React.memo(({ angle = 0 }) => {
                 {/* 각도기 배경 (아래쪽 반원) */}
                 <path
                     d={`M ${centerX + radius} ${centerY} 
-                        A ${radius} ${radius} 0 0 1 
+                        A ${radius} ${radius} 0 0 0 
                         ${centerX - radius} ${centerY}`}
                     fill="#FEF3C7"
                     stroke="#F59E0B"
@@ -91,7 +92,7 @@ const CameraAngleVisualizer = React.memo(({ angle = 0 }) => {
                 {/* 각도 표시 텍스트 */}
                 <text
                     x={centerX}
-                    y={centerY + radius * 0.5}
+                    y={centerY - radius * 0.5}
                     fontSize={minDimension * 0.08}
                     fill="#3B82F6"
                     fontWeight="bold"

@@ -69,8 +69,8 @@ export const createChartOptionsPupil = ({ renderedFrame, actualMaxFrame, process
             grid: { display: false },
         },
         y: {
-            min: 0,
-            max: 8,
+            min: 2,
+            max: 7,
             ticks: { stepSize: 1 },
             grid: { color: "rgba(0,0,0,0.2)" },
         },
@@ -122,7 +122,7 @@ export const createChartOptionsY = ({ renderedFrame, actualMaxFrame, processedDa
             },
         },
         y: {
-            reverse: true, // y축 반전
+            reverse: false, // y축 반전
             min: -8,
             max: 8,
             ticks: { stepSize: 1 },
