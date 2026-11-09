@@ -12,7 +12,7 @@ const EyeCanvas = forwardRef(({ side, status, children }, ref) => {
                     w-full px-2 py-1 
                     flex flex-row items-center 
                     z-10 
-                    gap-2 
+                    gap-0 
                     ${side === "OD" ? "justify-start" : "justify-end"}
                 `}
             >

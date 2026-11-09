@@ -1,7 +1,9 @@
+import { useDialog } from "../utils/dialog";
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 
 const XaxisCalibrationTable = () => {
+    const dialog = useDialog();
     const [calibrationData, setCalibrationData] = useState({});
 
     // 초기 로드
@@ -30,8 +32,15 @@ const XaxisCalibrationTable = () => {
     };
 
     // 데이터 삭제
-    const clearData = () => {
-        if (window.confirm("모든 캘리브레이션 데이터를 삭제하시겠습니까?")) {
+    const clearData = async () => {
+        if (
+            await dialog.confirm({
+                title: "캘리브레이션 데이터 삭제",
+                message: "모든 캘리브레이션 데이터를 삭제하시겠습니까?",
+                danger: true,
+            })
+        ) {
+            if (!localStorage.getItem("XaxisCalibrationData")) return;
             localStorage.removeItem("XaxisCalibrationData");
             localStorage.removeItem("XaxisCalibrationDetails");
             setCalibrationData({});
@@ -87,14 +96,21 @@ const XaxisCalibrationTable = () => {
     };
 
     // 특정 pitch 데이터 삭제
-    const deletePitchData = (pitch) => {
-        if (!window.confirm(`pitch ${pitch} 데이터를 삭제하시겠습니까?`)) {
+    const deletePitchData = async (pitch) => {
+        if (
+            !(await dialog.confirm({
+                title: "캘리브레이션 데이터 삭제",
+                message: `pitch ${pitch} 데이터를 삭제하시겠습니까?`,
+                danger: true,
+            }))
+        ) {
             return;
         }
 
         const saved = localStorage.getItem("XaxisCalibrationData");
         const data = saved ? JSON.parse(saved) : {};
 
+        if (!Object.hasOwn(data, pitch)) return;
         delete data[pitch];
 
         localStorage.setItem("XaxisCalibrationData", JSON.stringify(data));
@@ -105,8 +121,14 @@ const XaxisCalibrationTable = () => {
     };
 
     // 특정 distance 데이터 삭제
-    const deleteDistanceData = (pitch, distance) => {
-        if (!window.confirm(`pitch ${pitch}, distance ${distance} 데이터를 삭제하시겠습니까?`)) {
+    const deleteDistanceData = async (pitch, distance) => {
+        if (
+            !(await dialog.confirm({
+                title: "캘리브레이션 데이터 삭제",
+                message: `pitch ${pitch}, distance ${distance} 데이터를 삭제하시겠습니까?`,
+                danger: true,
+            }))
+        ) {
             return;
         }
 
@@ -134,12 +156,23 @@ const XaxisCalibrationTable = () => {
         navigator.clipboard
             .writeText(dataStr)
             .then(() => toast.success(`pitch ${pitch} 데이터 복사됨`))
-            .catch(() => toast.error("복사 실패"));
+            .catch(() =>
+                dialog.alert({
+                    title: "복사하지 못했습니다",
+                    message: "클립보드 접근 권한을 확인한 뒤 다시 복사하세요.",
+                }),
+            );
     };
 
     // 특정 eye_angle 데이터 삭제
-    const deleteEyeAngleData = (pitch, eyeAngle) => {
-        if (!window.confirm(`pitch ${pitch}, eye_angle ${eyeAngle}° 데이터를 삭제하시겠습니까?`)) {
+    const deleteEyeAngleData = async (pitch, eyeAngle) => {
+        if (
+            !(await dialog.confirm({
+                title: "캘리브레이션 데이터 삭제",
+                message: `pitch ${pitch}, eye_angle ${eyeAngle}° 데이터를 삭제하시겠습니까?`,
+                danger: true,
+            }))
+        ) {
             return;
         }
 
@@ -220,25 +253,17 @@ const XaxisCalibrationTable = () => {
                                             .map(([eyeAngle, delta_x]) => (
                                                 <tr
                                                     key={eyeAngle}
-                                                    className={
-                                                        eyeAngle === "0"
-                                                            ? "bg-green-50"
-                                                            : "hover:bg-gray-50"
-                                                    }
+                                                    className={eyeAngle === "0" ? "bg-green-50" : "hover:bg-gray-50"}
                                                 >
                                                     <td className="border px-2 py-1 text-center font-medium">
                                                         {eyeAngle}° {eyeAngle === "0" && "(기준)"}
                                                     </td>
                                                     <td className="border px-2 py-1 text-right font-mono text-sm font-bold">
-                                                        {typeof delta_x === "number"
-                                                            ? delta_x.toFixed(3)
-                                                            : delta_x}
+                                                        {typeof delta_x === "number" ? delta_x.toFixed(3) : delta_x}
                                                     </td>
                                                     <td className="border px-2 py-1 text-center">
                                                         <button
-                                                            onClick={() =>
-                                                                deleteEyeAngleData(pitch, eyeAngle)
-                                                            }
+                                                            onClick={() => deleteEyeAngleData(pitch, eyeAngle)}
                                                             className="px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
                                                         >
                                                             ✕
@@ -258,10 +283,7 @@ const XaxisCalibrationTable = () => {
                 <p>카메라 각도 (pitch): {Object.keys(calibrationData).length}개</p>
                 <p>
                     총 측정 포인트:{" "}
-                    {Object.values(calibrationData).reduce(
-                        (sum, eyeAngles) => sum + Object.keys(eyeAngles).length,
-                        0
-                    )}
+                    {Object.values(calibrationData).reduce((sum, eyeAngles) => sum + Object.keys(eyeAngles).length, 0)}
                     개
                 </p>
             </div>

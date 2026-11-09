@@ -15,24 +15,25 @@ export function findHideRegionsFromProcessedData(processedData) {
         return [];
     }
 
-    const osIsHide = processedData[LEFT].isHide || [];
-    const odIsHide = processedData[RIGHT].isHide || [];
-    const dataLength = Math.max(osIsHide.length, odIsHide.length);
+    // visible = 그 눈이 보임(셔터 열림). 안드로이드 is_visible(옛 is_hide 와 같은 값)
+    const osVisible = processedData[LEFT].visible || [];
+    const odVisible = processedData[RIGHT].visible || [];
+    const dataLength = Math.max(osVisible.length, odVisible.length);
 
     const regions = [];
     let currentRegion = null;
 
     for (let i = 0; i < dataLength; i++) {
-        const odHide = odIsHide[i] || false;
-        const osHide = osIsHide[i] || false;
+        const odOn = odVisible[i] || false; // OD 가 보임
+        const osOn = osVisible[i] || false; // OS 가 보임
 
-        // 현재 상태 확인
+        // 상태 이름은 "무엇이 가려지고(hide) 무엇이 보이는지(show)" 그대로다. 양쪽 보임/양쪽 가림은 구간으로 쓰지 않는다
         let currentState = null;
-        if (odHide && !osHide) {
+        if (odOn && !osOn) {
             currentState = "os_hide_od_show";
-        } else if (!odHide && osHide) {
+        } else if (!odOn && osOn) {
             currentState = "od_hide_os_show";
-        } else if (!odHide && !osHide) {
+        } else if (odOn && osOn) {
             currentState = "both_show";
         } else {
             currentState = "both_hide";
@@ -203,8 +204,10 @@ export function analyzeHidePatternsFromProcessedData(processedData) {
     const regions = findHideRegionsFromProcessedData(processedData);
     const results = [];
 
-    // 첫 번째와 마지막 구간 제외
-    const filteredRegions = regions.slice(1, -1);
+    // 첫 단안 구간(해리)만 제외한다 (2026-11-02 사용자 결정, 기본 프리셋 = 해리 + 3쌍 + 종료).
+    // 예전엔 마지막 구간도 버렸는데(slice(1,-1)), 옛 시퀀스는 끝에 여분 단안 블록이 하나 더 있어 결과적으로 3쌍이 남았다.
+    // 리포트는 앞 6개([0]~[5])만 쓰므로 옛 파일의 1~3차 값은 그대로다.
+    const filteredRegions = regions.slice(1);
 
     filteredRegions.forEach((region, index) => {
         const regionNumber = index + 1;

@@ -1,10 +1,11 @@
+import { useDialog } from "../utils/dialog";
 import React, { useEffect, useState } from "react";
 import useMyTableStore from "../stores/useMyTableStore";
 import useVariableStore from "../stores/useVariableStore";
 import RippleButton from "./RippleButton";
 
-
 export default function CalibrationTable({ avgValue, onSaved }) {
+    const dialog = useDialog();
     const { degTable, setDegTable } = useMyTableStore();
     const { kyhTemp, setKyhTemp } = useVariableStore();
 
@@ -17,17 +18,17 @@ export default function CalibrationTable({ avgValue, onSaved }) {
 
     const onSave = () => {
         if (!formData.deg) {
-            alert("각도를 입력해주세요");
+            dialog.alert({ title: "입력 확인", message: "각도를 입력해주세요" });
             return;
         }
 
         if (!kyhTemp) {
-            alert("거리를 입력해주세요");
+            dialog.alert({ title: "입력 확인", message: "거리를 입력해주세요" });
             return;
         }
 
         if (!formData.avg) {
-            alert("avg를 입력해주세요");
+            dialog.alert({ title: "입력 확인", message: "평균값을 입력해주세요" });
             return;
         }
 
@@ -36,7 +37,7 @@ export default function CalibrationTable({ avgValue, onSaved }) {
         const avg = formData.avg;
 
         if (isNaN(deg)) {
-            alert("숫자를 입력해주세요");
+            dialog.alert({ title: "입력 확인", message: "숫자를 입력해주세요" });
             return;
         }
 
@@ -62,8 +63,15 @@ export default function CalibrationTable({ avgValue, onSaved }) {
         onSaved();
     };
 
-    const clearTable = () => {
-        if (window.confirm("is clear?")) {
+    const clearTable = async () => {
+        if (
+            await dialog.confirm({
+                title: "테이블 삭제",
+                message: "저장된 각도·거리 테이블을 모두 삭제합니다. 이 작업은 되돌릴 수 없습니다.",
+                danger: true,
+            })
+        ) {
+            if (!useMyTableStore.getState().degTable) return;
             setDegTable(null);
         }
     };

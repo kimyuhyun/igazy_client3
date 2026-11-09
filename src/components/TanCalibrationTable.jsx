@@ -1,7 +1,9 @@
+import { useDialog } from "../utils/dialog";
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 
 const CalibrationTable = () => {
+    const dialog = useDialog();
     const [calibrationData, setCalibrationData] = useState({});
 
     // 초기 로드
@@ -30,8 +32,15 @@ const CalibrationTable = () => {
     };
 
     // 데이터 삭제
-    const clearData = () => {
-        if (window.confirm("모든 캘리브레이션 데이터를 삭제하시겠습니까?")) {
+    const clearData = async () => {
+        if (
+            await dialog.confirm({
+                title: "캘리브레이션 데이터 삭제",
+                message: "모든 캘리브레이션 데이터를 삭제하시겠습니까?",
+                danger: true,
+            })
+        ) {
+            if (!localStorage.getItem("calibrationData")) return;
             localStorage.removeItem("calibrationData");
             setCalibrationData({});
         }
@@ -49,14 +58,21 @@ const CalibrationTable = () => {
     };
 
     // 특정 카메라 각도 데이터 삭제
-    const deleteAngleData = (tan_gaze) => {
-        if (!window.confirm(`tan_gaze ${tan_gaze} 데이터를 삭제하시겠습니까?`)) {
+    const deleteAngleData = async (tan_gaze) => {
+        if (
+            !(await dialog.confirm({
+                title: "캘리브레이션 데이터 삭제",
+                message: `tan_gaze ${tan_gaze} 데이터를 삭제하시겠습니까?`,
+                danger: true,
+            }))
+        ) {
             return;
         }
 
         const saved = localStorage.getItem("calibrationData");
         const data = saved ? JSON.parse(saved) : {};
 
+        if (!Object.hasOwn(data, tan_gaze)) return;
         // 해당 키 삭제
         delete data[tan_gaze];
 
@@ -83,7 +99,10 @@ const CalibrationTable = () => {
                 toast.success(`tan_gaze ${tan_gaze} 데이터 복사됨`);
             })
             .catch(() => {
-                toast.error("복사 실패");
+                dialog.alert({
+                    title: "복사하지 못했습니다",
+                    message: "클립보드 접근 권한을 확인한 뒤 다시 복사하세요.",
+                });
             });
     };
 

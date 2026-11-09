@@ -73,6 +73,12 @@
 }
 
 @media print {
+    /* 리포트는 A4 세로. 화면은 두 장을 가로로 보여 주지만 인쇄는 한 장씩 세로로 */
+    @page {
+        size: A4 portrait;
+        margin: 8mm;
+    }
+
     .a4-page {
         break-after: page;
     }
@@ -88,5 +94,85 @@
         print-color-adjust: exact !important;
         -webkit-print-color-adjust: exact !important;
         color-adjust: exact !important;
+    }
+}
+
+/* Full-width HUD banners. Stack upward from 24px above the viewport bottom. */
+.ow-toaster {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 8px;
+    pointer-events: none;
+}
+.ow-toaster > div {
+    position: relative !important;
+    transform: none !important;
+    top: auto !important;
+    bottom: auto !important;
+}
+.ow-toaster .ow-toast {
+    width: 100%;
+    pointer-events: none;
+}
+.ow-toast--enter {
+    animation: ow-toast-in 200ms ease-out both;
+}
+.ow-toast--exit {
+    animation: ow-toast-out 180ms ease-in both;
+}
+.ow-toast .ow-toast__panel {
+    pointer-events: none;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    max-width: none;
+    padding: 14px 0;
+    background: rgba(10, 12, 18, 0.8);
+    backdrop-filter: blur(4px);
+    border-radius: 0;
+    box-shadow: none;
+    color: #fff;
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    text-align: center;
+    animation: none !important;
+    opacity: 1 !important;
+}
+.ow-toast__message {
+    max-width: min(960px, 92vw);
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.ow-toast__message > div {
+    margin: 0;
+    justify-content: center;
+}
+@keyframes ow-toast-in {
+    from {
+        transform: scaleY(0.6);
+        opacity: 0;
+    }
+    to {
+        transform: scaleY(1);
+        opacity: 1;
+    }
+}
+@keyframes ow-toast-out {
+    from {
+        transform: scaleY(1);
+        opacity: 1;
+    }
+    to {
+        transform: scaleY(0.6);
+        opacity: 0;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ow-toast--enter,
+    .ow-toast--exit {
+        animation-duration: 1ms;
     }
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import {
@@ -16,18 +16,21 @@ import {
     BarChart,
     Ruler,
     Settings,
+    Camera,
     Play,
 } from "lucide-react";
-import menu from "../utils/menus";
+import menu, { devMenuVisible } from "../utils/menus";
 import useVariableStore from "../stores/useVariableStore";
 
 const iconMap = {
     ruler: Ruler,
     play: Play,
     settings: Settings,
+    camera: Camera,
 };
 
-export default function Layout({ children }) {
+/** @param headerActions 상단바 오른쪽에 넣을 페이지별 버튼(선택). 예: 측정 페이지의 셔터 설정 톱니 */
+export default function Layout({ children, headerActions = null }) {
     const { isGlobalSideBarOpen, setGlobalSideBarOpen } = useVariableStore();
     const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
     const [isDarkMode, setIsDarkMode] = useState(false);
@@ -36,6 +39,8 @@ export default function Layout({ children }) {
     const [currentMenuName, setCurrentMenuName] = useState("");
     const location = useLocation();
     const navigate = useNavigate();
+    // location 이 바뀔 때마다 다시 계산 — 같은 탭에서 ?token=... 으로 들어오면 그때부터 보인다
+    const showDevMenu = useMemo(() => devMenuVisible(), [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         console.log("useEffect 1");
@@ -124,6 +129,7 @@ export default function Layout({ children }) {
                 <nav className="flex flex-col gap-2 p-4">
                     {menu
                         .filter((item) => item.link !== "/") // "/" 링크인 항목 제외
+                        .filter((item) => !item.hidden || showDevMenu) // 숨김 메뉴는 ?token=kkyyhh 로 들어온 탭에서만
                         .map((item, i) => {
                             const IconComponent = iconMap[item.icon] || LayoutDashboard;
                             // const isActive = location.pathname === item.link;
@@ -177,6 +183,8 @@ export default function Layout({ children }) {
                             {currentMenuName}
                         </div>
                     </div>
+
+                    {headerActions && <div className="flex items-center gap-3">{headerActions}</div>}
 
                     {/* <div className="flex items-center gap-3 relative">
                         <button onClick={toggleDarkMode}>

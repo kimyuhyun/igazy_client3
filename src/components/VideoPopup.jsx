@@ -3,7 +3,7 @@ import { PlusIcon, MinusIcon, XIcon } from "lucide-react";
 import useVariableStore from "../stores/useVariableStore";
 import RippleButton from "./RippleButton";
 
-export default function VideoPopup({ children, onClose }) {
+export default function VideoPopup({ children, onClose, toolbarActions = null }) {
     const { POPUP_WIDTH_INDEX, setPopupWidthIndex } = useVariableStore();
 
     const widthClassArr = [
@@ -56,10 +56,7 @@ export default function VideoPopup({ children, onClose }) {
                         >
                             <PlusIcon className="size-4" />
                         </RippleButton>
-
-
-
-
+                        {toolbarActions}
                         <div className="flex-1" />
 
                         {/* 닫기 버튼 */}
@@ -75,7 +72,7 @@ export default function VideoPopup({ children, onClose }) {
 
 
                     {/* 팝업 내용 */}
-                    <div className="p-1 flex-1 overflow-y-auto scrollbar-ultra-thin bg-white">{children}</div>
+                    <div className="p-0 flex-1 overflow-y-auto scrollbar-ultra-thin bg-white">{children}</div>
                 </div>
             </div>
         </div>

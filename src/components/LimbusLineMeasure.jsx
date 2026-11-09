@@ -12,7 +12,11 @@ import { Check } from "lucide-react";
 const FALLBACK_W = 1280;
 const FALLBACK_H = 720;
 
-export default function LimbusLineMeasure({ imageSource, pupilCenter, initialDiameter, onComplete }) {
+/**
+ * @param coordWidth 좌표 기준 폭(results.json frame_width, 보통 1280). 주면 이미지가 640 이어도 initialDiameter 를 좌표 px 로 받고
+ *   onComplete 도 좌표 px 로 돌려준다(이미지 px × coordWidth/이미지 폭). 없으면 1:1(이미지 px). pupilCenter 는 항상 이미지 px.
+ */
+export default function LimbusLineMeasure({ imageSource, pupilCenter, initialDiameter, onComplete, coordWidth = null }) {
     const canvasRef = useRef(null);
     const imgRef = useRef(null);
     const [size, setSize] = useState({ w: FALLBACK_W, h: FALLBACK_H });
@@ -90,10 +94,12 @@ export default function LimbusLineMeasure({ imageSource, pupilCenter, initialDia
             // 기본 라인 위치: 직전 지름 우선(중심 기준 ±), 없으면 화면 1/3·2/3
             const { pupilCenter: pc, initialDiameter: d0 } = initRef.current;
             const cx = pc?.x ?? w / 2;
-            const halfD = d0 && d0 > 10 ? d0 / 2 : w * 0.16;
+            const k = coordWidth && w ? coordWidth / w : 1; // 좌표 px → 이미지 px 는 ÷k
+            const halfD = d0 && d0 > 10 ? d0 / k / 2 : w * 0.16;
             setLines({ left: cx - halfD, right: cx + halfD });
         };
-    }, [imageSource]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [imageSource, coordWidth]);
 
     useEffect(() => {
         draw();
@@ -130,7 +136,8 @@ export default function LimbusLineMeasure({ imageSource, pupilCenter, initialDia
         if (!lines || !onComplete) return;
         // 캔버스가 원본과 1:1이므로 화면에 보이는 값이 그대로 저장값이다.
         // 거리 계산의 광학 상수가 가로 해상도에 비례하므로 폭도 같이 넘긴다.
-        onComplete(Math.abs(lines.right - lines.left), size.w);
+        const k = coordWidth && size.w ? coordWidth / size.w : 1; // 이미지 px → 좌표 px 는 ×k (640 이미지·1280 좌표면 ×2)
+        onComplete(Math.abs(lines.right - lines.left) * k, size.w);
     };
 
     if (!imageSource) return null;
@@ -139,9 +146,7 @@ export default function LimbusLineMeasure({ imageSource, pupilCenter, initialDia
         // w-fit이라 폭이 캔버스에 딱 맞고, mx-auto가 그 블록을 가운데로 보낸다.
         // (flex justify-center는 내용이 화면보다 넓을 때 왼쪽이 잘려 못 쓴다)
         <div className="select-none w-fit max-w-full mx-auto">
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 text-center">
-                마젠타 수직선(L·R)을 윤부 양끝(흰자 경계)에 드래그해 맞추세요 · 화면 1px = 원본 1px
-            </p>
+            {/* 안내 문구는 뺐다(현장에서 공간이 더 중요). 마젠타 수직선 L·R 을 윤부 양끝에 맞추면 되고 화면 1px = 원본 1px. */}
             {/* 화면이 좁으면 축소하지 말고 가로 스크롤한다. 축소하면 1:1이 깨진다. */}
             <div className="overflow-x-auto max-w-full">
                 {/* 컨트롤 바를 화면 안에 넣으려고 캔버스를 relative 컨테이너로 감싼다.
@@ -152,7 +157,7 @@ export default function LimbusLineMeasure({ imageSource, pupilCenter, initialDia
                         width={size.w}
                         height={size.h}
                         style={{ width: `${size.w}px`, height: `${size.h}px` }}
-                        className="bg-black block cursor-ew-resize rounded"
+                        className="bg-black block cursor-ew-resize"
                         onMouseDown={onDown}
                         onMouseMove={onMove}
                         onMouseUp={onUp}

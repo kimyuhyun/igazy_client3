@@ -1,3 +1,4 @@
+import { useDialog } from "../utils/dialog";
 import { useState, useRef, useEffect } from "react";
 import Layout from "../components/Layout";
 import MeasurementScale from "../components/MeasurementScale";
@@ -9,9 +10,12 @@ import LimbusLineMeasure from "../components/LimbusLineMeasure";
 import Popup from "../components/Popup";
 import XaxisCalibrationTable, { saveCalibrationMeasurement } from "../components/XaxisCalibrationTable";
 import EyeWsClient from "../utils/eyeWsClient";
-import { drawBase64ToCanvas } from "../utils/canvasUtils";
+import { drawBase64ToCanvas, DEFAULT_COORD_WIDTH, overlayFromDetect, isDetectValid } from "../utils/canvasUtils";
+import PupilShot from "../components/PupilShot";
 
 export default function XaxisCali() {
+    const dialog = useDialog();
+    const sweepPending = useRef(false);
     const { IP, LIMBUS_MM, LIMBUS_PX, setLimbusPX, setLimbusMM } = useVariableStore();
 
     const aspectClass = "aspect-[16/9]";
@@ -22,6 +26,9 @@ export default function XaxisCali() {
     const wsClientRef = useRef(null);
     const [isStreaming, setStreaming] = useState(false);
     const liveUnsubscribeRef = useRef(null);
+    const mountedRef = useRef(true); // 언마운트 뒤 늦게 끝난 /api/live 응답이 WS 를 만들지 않게
+    const startGenRef = useRef(0);
+    const streamApiUrlRef = useRef(null); // 열린 스트림의 서버 주소
 
     const [connectionStatus, setConnectionStatus] = useState("disconnected");
 
@@ -37,7 +44,11 @@ export default function XaxisCali() {
         eye_angle: 0.0,
     });
 
-    const [pupilCenter, setPupilCenter] = useState(null); // 윤부 자동 제안 앵커(동공 중심 px)
+    const [pupilCenter, setPupilCenter] = useState(null); // 윤부 자동 제안 앵커(동공 중심, 이미지 px)
+    // 윤부 샷 배율 = 좌표 기준 폭(frameWidth 1280) / 이미지 폭(imageWidth 640) = 2. 2026-10-27 부터 이미지는 640×360 이고
+    // 동공 좌표·LIMBUS_PX 는 720p 기준이라, 이미지 위에서 잰 px 는 ×2 로 저장하고 720p 좌표의 앵커는 ×0.5(÷2) 로 그린다.
+    // (좌표 ↔ 이미지 해상도 정리는 utils/canvasUtils.js 상단 주석 참고)
+    const [shotScale, setShotScale] = useState(1);
 
     // 기준측정(0°)에서 평균한 동공 절대 좌표(px). 측정 delta_x는 이 기준점 대비 이동량.
     const [refPoint, setRefPoint] = useState(null);
@@ -102,9 +113,7 @@ export default function XaxisCali() {
             if (a && Math.abs(a.left - target) <= TOL && Math.abs(a.right - target) <= TOL) {
                 return { left: a.left, right: a.right, tries: attempt };
             }
-            console.warn(
-                `[스윕] ${target}° 미도달 ${attempt}/3 — 실제 L=${a?.left ?? "없음"} R=${a?.right ?? "없음"}`,
-            );
+            console.warn(`[스윕] ${target}° 미도달 ${attempt}/3 — 실제 L=${a?.left ?? "없음"} R=${a?.right ?? "없음"}`);
             setSweepStatus(
                 `${target}° 재시도 ${attempt}/3 (실제 L${a?.left?.toFixed(1) ?? "?"} R${a?.right?.toFixed(1) ?? "?"})`,
             );
@@ -129,27 +138,32 @@ export default function XaxisCali() {
     // 안구모형을 목표 각도로 이동 (-40~+40° 범위)
     const moveEye = async (target) => {
         const t = Math.max(-40, Math.min(40, target));
+        let failure = null;
         setEyeBusy(true);
         try {
             await sendEyeCmd({ type: "both", left: t, right: t });
             setEyeAngle(t);
         } catch (e) {
-            toast.error(`각도 이동 실패: ${e.message} (프록시/폰2 연결 확인)`);
+            failure = `각도 이동 실패: ${e.message}\n프록시/폰2 연결을 확인하고 다시 시도하세요.`;
         } finally {
             setEyeBusy(false);
+            if (failure) dialog.alert({ title: "안구모형 제어 실패", message: failure });
         }
     };
 
     // 원점(home) 복귀
-    const homeEye = async () => {
+    const homeEye = async (propagate = false) => {
+        let failure = null;
         setEyeBusy(true);
         try {
             await sendEyeCmd({ type: "home" });
             setEyeAngle(0);
         } catch (e) {
-            toast.error(`home 실패: ${e.message}`);
+            if (propagate === true) throw e;
+            failure = `원점 복귀 실패: ${e.message}\n연결을 확인하고 다시 시도하세요.`;
         } finally {
             setEyeBusy(false);
+            if (failure) dialog.alert({ title: "안구모형 제어 실패", message: failure });
         }
     };
 
@@ -194,6 +208,7 @@ export default function XaxisCali() {
         setProgress(0);
         setProgressCount(50);
         for (let i = 0; i < 50; i++) {
+            if (!mountedRef.current) return null;
             const r = await getOneFramePupilDetect(60);
             if (r && r.x != null && r.y != null) raw.push(r);
             setProgress(i + 1);
@@ -208,26 +223,21 @@ export default function XaxisCali() {
 
         const xs = good.map((r) => r.x);
         const ys = good.map((r) => r.y);
-        const tilts = good.filter((r) => r.tilt_dir != null).map((r) => r.tilt_dir);
         const ratios = good
             .filter((r) => r.major_r > 0 && r.minor_r > 0)
             .map((r) => Math.min(r.minor_r, r.major_r) / Math.max(r.minor_r, r.major_r));
-        const tMed = tilts.length ? median(tilts) : null;
-
         return {
             avgX: median(xs),
             avgY: median(ys),
             n: good.length,
             rejected: raw.length - good.length,
             majorR: median(good.map((r) => r.major_r)),
-            tiltDir: tMed,
-            tiltDirSd:
-                tilts.length > 1 ? Math.sqrt(tilts.reduce((s, v) => s + (v - tMed) ** 2, 0) / tilts.length) : null,
             axisRatio: ratios.length ? median(ratios) : null,
         };
     };
 
     const autoSweep = async () => {
+        if (sweepPending.current) return;
         if (!refPoint) {
             toast.error("기준측정(0°)을 먼저 실행해주세요");
             return;
@@ -241,41 +251,63 @@ export default function XaxisCali() {
             toast.error("LIMBUS_MM/PX 확인 — 거리측정을 먼저 해주세요");
             return;
         }
+        sweepPending.current = true;
+        let failure = null;
+        let ws = null;
         const pitch = formData.pitch;
         setSweeping(true);
         setLoading(true);
         // 실제 각도 검증용 WS 열기 (없으면 무검증 진행)
         latestAngleRef.current = null;
-        const ws = await openStatusWs();
-        if (!ws) toast("각도 확인용 연결 실패 — 검증 없이 진행합니다", { icon: "⚠️" });
         try {
+            ws = await openStatusWs();
+            if (!mountedRef.current) return;
+            if (!ws) {
+                setLoading(false);
+                const proceed = await dialog.confirm({
+                    title: "각도 검증 연결 실패",
+                    message: "실제 각도를 검증하지 않고 스윕을 진행할까요?\n취소한 뒤 연결을 복구하는 것을 권장합니다.",
+                    okText: "검증 없이 진행",
+                    danger: true,
+                });
+                if (
+                    !proceed ||
+                    !mountedRef.current ||
+                    useVariableStore.getState().IP !== IP ||
+                    useVariableStore.getState().LIMBUS_MM !== LIMBUS_MM ||
+                    useVariableStore.getState().LIMBUS_PX !== LIMBUS_PX
+                )
+                    return;
+                setLoading(true);
+            }
             // 0°(기준)는 사용자가 직접 입력. 자동 스윕은 4°부터 측정 시작.
             let aborted = false;
             for (const { pass, dir, angles } of SWEEP_PASSES) {
-                if (aborted) break;
+                if (aborted || !mountedRef.current) break;
                 // 2패스 시작 전 원점 복귀 — 40°에서 곧장 재는 게 아니라 같은 절차로 접근시킨다
                 if (pass > 1) {
                     setSweepStatus(`${pass}패스 준비 — 원점 복귀 중…`);
-                    await homeEye();
+                    await homeEye(true);
                     await sleep(SWEEP_SETTLE_MS);
                 }
                 for (const angle of angles) {
+                    if (!mountedRef.current) return;
                     setSweepStatus(`[${pass}/${SWEEP_PASSES.length} ${dir}] ${angle}° 이동 중…`);
                     // 안구가 목표 각도에 실제 도달했는지 확인한 뒤에만 측정
                     const reached = await moveEyeVerified(angle, ws);
+                    if (!mountedRef.current) return;
                     if (!reached) {
                         const a = latestAngleRef.current;
-                        toast.error(
-                            `${angle}° 도달 실패 (실제 L${a?.left?.toFixed(1) ?? "?"} R${a?.right?.toFixed(1) ?? "?"}) — 스윕 중단`,
-                        );
+                        failure = `${angle}° 도달 실패 (실제 L${a?.left?.toFixed(1) ?? "?"} R${a?.right?.toFixed(1) ?? "?"}) — 스윕 중단`;
                         aborted = true;
                         break;
                     }
 
                     setSweepStatus(`[${pass}/${SWEEP_PASSES.length} ${dir}] ${angle}° 측정 중…`);
                     const s = await sampleAvg(refPoint.majorR);
+                    if (!mountedRef.current) return;
                     if (!s) {
-                        toast.error(`${angle}° 유효 샘플 부족(피팅 붕괴 의심) — 스윕 중단`);
+                        failure = `${angle}° 유효 샘플 부족(피팅 붕괴 의심) — 스윕 중단`;
                         aborted = true;
                         break;
                     }
@@ -303,14 +335,11 @@ export default function XaxisCali() {
                         actual_left: reached.unverified ? null : Number(reached.left.toFixed(2)),
                         actual_right: reached.unverified ? null : Number(reached.right.toFixed(2)),
                         move_tries: reached.tries,
-                        // 타원 기반(스케일-프리) 방식 검증용
-                        tilt_dir: s.tiltDir != null ? Number(s.tiltDir.toFixed(2)) : null,
-                        tilt_dir_sd: s.tiltDirSd != null ? Number(s.tiltDirSd.toFixed(2)) : null,
+                        // 타원 기반(스케일-프리) 방식 검증용 (tilt_dir 은 2026-10-27 제거 — 쓰는 곳 없음)
                         major_r: s.majorR != null ? Number(s.majorR.toFixed(2)) : null,
                         rejected: s.rejected, // 장축 이상으로 버린 샘플 수
                         ref_major_r: refPoint.majorR != null ? Number(refPoint.majorR.toFixed(2)) : null,
                         axis_ratio: s.axisRatio != null ? Number(s.axisRatio.toFixed(4)) : null,
-                        ref_tilt_dir: refPoint.tiltDir != null ? Number(refPoint.tiltDir.toFixed(2)) : null,
                         ref_axis_ratio: refPoint.axisRatio != null ? Number(refPoint.axisRatio.toFixed(4)) : null,
                     });
                     const actTxt = reached.unverified
@@ -328,11 +357,14 @@ export default function XaxisCali() {
                 }
             }
 
-            await homeEye();
-            setSweepStatus("스윕 완료");
-            toast.success("자동 스윕 완료");
+            if (!mountedRef.current) return;
+            await homeEye(true);
+            if (!failure) {
+                setSweepStatus("스윕 완료");
+                toast.success("자동 스윕 완료");
+            }
         } catch (e) {
-            toast.error(`스윕 오류: ${e.message}`);
+            failure = `${failure ? failure + "\n" : ""}스윕 오류: ${e.message}`;
         } finally {
             try {
                 ws?.close();
@@ -342,6 +374,14 @@ export default function XaxisCali() {
             setSweeping(false);
             setLoading(false);
             setProgress(0);
+            sweepPending.current = false;
+            if (failure) {
+                setSweepStatus("스윕 중단");
+                dialog.alert({
+                    title: "스윕 중단",
+                    message: `${failure}\n연결과 동공 검출 상태를 확인한 뒤 다시 시작하세요.`,
+                });
+            }
         }
     };
 
@@ -360,7 +400,8 @@ export default function XaxisCali() {
     };
 
     // 윤부 지름(px) 확정 시 공통 처리 (반자동·수동 공용)
-    const onLimbusComplete = (limbusPxDiameter) => {
+    const onLimbusComplete = (imagePxDiameter) => {
+        const limbusPxDiameter = parseFloat((imagePxDiameter * shotScale).toFixed(2)); // 이미지 px → 좌표(720p) px
         setLimbusMM("12.12");
         setLimbusPX(limbusPxDiameter);
         setResultImage(null);
@@ -381,24 +422,32 @@ export default function XaxisCali() {
             });
 
             if (!data.frameBase64) {
-                toast.error("프레임을 가져올 수 없습니다. START로 스트림을 먼저 켜주세요.");
+                dialog.alert({
+                    title: "프레임 조회 실패",
+                    message: "프레임을 가져올 수 없습니다. START로 스트림을 먼저 켜주세요.",
+                });
                 return;
             }
 
-            // 동공 중심(절대 px) — 윤부 자동 제안 원의 앵커. 검출 실패 시 null(중앙으로 폴백)
-            setPupilCenter(data.x != null && data.y != null ? { x: data.x, y: data.y } : null);
+            // 동공 중심(절대 px, 좌표 기준) — 윤부 자동 제안 원의 앵커. 이미지 px 로 환산해 넘긴다. 검출 실패 시 null(중앙으로 폴백)
+            const scale =
+                (data.frameWidth || DEFAULT_COORD_WIDTH) / (data.imageWidth || data.frameWidth || DEFAULT_COORD_WIDTH);
+            setShotScale(scale);
+            setPupilCenter(isDetectValid(data) ? { x: data.x / scale, y: data.y / scale } : null);
             setResultImage(`data:image/jpeg;base64,${data.frameBase64}`);
             toast("자동 제안된 윤부 원을 확인하고, 필요하면 드래그/휠로 맞춘 뒤 확인을 누르세요", { icon: "🎯" });
         } catch (error) {
             console.error("거리 측정 실패:", error);
-            toast.error(error.response?.data?.error || error.message);
+            dialog.alert({
+                title: "거리 측정 실패",
+                message: `${error.response?.data?.error || error.message}\n연결과 스트림 상태를 확인하고 다시 시도하세요.`,
+            });
         }
     };
 
     const getOneFramePupilDetect = async (idx) => {
         if (!canvasRef.current) {
-            toast.error("캔버스가 없습니다");
-            return;
+            throw new Error("캔버스가 없습니다. 스트림을 다시 시작하세요.");
         }
 
         try {
@@ -414,7 +463,11 @@ export default function XaxisCali() {
             console.log(data);
 
             if (data.frameBase64) {
-                setResultImage2(`data:image/jpeg;base64,${data.frameBase64}`);
+                // 동공 표시 없는 이미지 + 좌표 → React 가 원을 그린다
+                setResultImage2({
+                    base64: data.frameBase64,
+                    overlay: overlayFromDetect(data, data.frameWidth || DEFAULT_COORD_WIDTH),
+                });
             }
 
             return {
@@ -423,7 +476,6 @@ export default function XaxisCali() {
                 x: data.x ?? null,
                 y: data.y ?? null,
                 // 타원 기반 각도 검증용 (스케일-프리 방식 실험)
-                tilt_dir: data.tiltDir ?? null,
                 major_r: data.majorR ?? null,
                 minor_r: data.minorR ?? null,
             };
@@ -479,70 +531,78 @@ export default function XaxisCali() {
     };
 
     const handleStandardMeasure = async () => {
-        const pitchResults = [];
-        const xSamples = [];
-        const ySamples = [];
-        const tiltSamples = []; // 타원 기울기 방향(°)
-        const ratioSamples = []; // 단축/장축
-        const majorSamples = []; // 기준 장축 — 각도별 피팅 붕괴 판정에 쓴다
-        setProgress(0); // ✅ 초기화
-        setProgressCount(50);
-        setLoading(true);
-        for (let i = 0; i < 50; i++) {
-            const result = await getOneFramePupilDetect(50);
-            if (result?.pitch) {
-                pitchResults.push(result.pitch);
+        let failure = null;
+        try {
+            const pitchResults = [];
+            const xSamples = [];
+            const ySamples = [];
+            const ratioSamples = []; // 단축/장축
+            const majorSamples = []; // 기준 장축 — 각도별 피팅 붕괴 판정에 쓴다
+            setProgress(0); // ✅ 초기화
+            setProgressCount(50);
+            setLoading(true);
+            for (let i = 0; i < 50; i++) {
+                if (!mountedRef.current) return;
+                const result = await getOneFramePupilDetect(50);
+                if (result?.pitch) {
+                    pitchResults.push(result.pitch);
+                }
+                // 동공 절대 좌표 수집 (검출 실패 시 null → 제외)
+                if (result && result.x != null && result.y != null) {
+                    xSamples.push(result.x);
+                    ySamples.push(result.y);
+                    if (result.major_r > 0 && result.minor_r > 0) {
+                        majorSamples.push(result.major_r);
+                        ratioSamples.push(
+                            Math.min(result.minor_r, result.major_r) / Math.max(result.minor_r, result.major_r),
+                        );
+                    }
+                }
+                setProgress(i + 1);
+                await new Promise((resolve) => setTimeout(resolve, 200));
             }
-            // 동공 절대 좌표 수집 (검출 실패 시 null → 제외)
-            if (result && result.x != null && result.y != null) {
-                xSamples.push(result.x);
-                ySamples.push(result.y);
-                if (result.tilt_dir != null) tiltSamples.push(result.tilt_dir);
-                if (result.major_r > 0 && result.minor_r > 0) {
-                    majorSamples.push(result.major_r);
-                    ratioSamples.push(
-                        Math.min(result.minor_r, result.major_r) / Math.max(result.minor_r, result.major_r),
-                    );
+
+            // 1차 평균 계산
+            if (pitchResults.length > 0) {
+                const firstAvg = pitchResults.reduce((acc, n) => acc + n, 0) / pitchResults.length;
+
+                // 평균값과 4 이상 차이나는 값 제거
+                const filtered = pitchResults.filter((angle) => Math.abs(angle - firstAvg) < 4);
+                console.log(filtered);
+
+                // 필터링된 값들로 최종 평균 계산
+                if (filtered.length > 0) {
+                    const finalAvg = filtered.reduce((acc, n) => acc + n, 0) / filtered.length;
+                    setFormData((prev) => ({
+                        ...prev,
+                        pitch: finalAvg.toFixed(1),
+                    }));
                 }
             }
-            setProgress(i + 1);
-            await new Promise((resolve) => setTimeout(resolve, 200));
-        }
 
-        // 1차 평균 계산
-        if (pitchResults.length > 0) {
-            const firstAvg = pitchResults.reduce((acc, n) => acc + n, 0) / pitchResults.length;
-
-            // 평균값과 4 이상 차이나는 값 제거
-            const filtered = pitchResults.filter((angle) => Math.abs(angle - firstAvg) < 4);
-            console.log(filtered);
-
-            // 필터링된 값들로 최종 평균 계산
-            if (filtered.length > 0) {
-                const finalAvg = filtered.reduce((acc, n) => acc + n, 0) / filtered.length;
-                setFormData((prev) => ({
-                    ...prev,
-                    pitch: finalAvg.toFixed(1),
-                }));
+            // 0° 기준점 저장 (동공 절대 좌표 평균)
+            if (xSamples.length >= 10) {
+                const refX = median(xSamples);
+                const refY = median(ySamples);
+                const refRatio = ratioSamples.length ? median(ratioSamples) : null;
+                const refMajor = majorSamples.length ? median(majorSamples) : null;
+                setRefPoint({ x: refX, y: refY, axisRatio: refRatio, majorR: refMajor });
+                toast.success(`기준점 설정 완료 (${xSamples.length}/50 샘플, x=${refX.toFixed(1)}px)`);
+            } else {
+                setRefPoint(null);
+                failure = `기준점 샘플 부족 (${xSamples.length}/50) — 동공 검출 상태를 확인해주세요`;
             }
+        } catch (error) {
+            failure = error.message;
+        } finally {
+            setLoading(false);
+            setProgress(0);
+            if (failure)
+                dialog.alert({
+                    title: "샘플 측정 실패",
+                    message: `${failure}\n스트림과 동공 검출 상태를 확인한 뒤 다시 측정하세요.`,
+                });
         }
-
-        // 0° 기준점 저장 (동공 절대 좌표 평균)
-        if (xSamples.length >= 10) {
-            const refX = median(xSamples);
-            const refY = median(ySamples);
-            const refTilt = tiltSamples.length ? median(tiltSamples) : null;
-            const refRatio = ratioSamples.length ? median(ratioSamples) : null;
-            const refMajor = majorSamples.length ? median(majorSamples) : null;
-            setRefPoint({ x: refX, y: refY, tiltDir: refTilt, axisRatio: refRatio, majorR: refMajor });
-            toast.success(`기준점 설정 완료 (${xSamples.length}/50 샘플, x=${refX.toFixed(1)}px)`);
-        } else {
-            setRefPoint(null);
-            toast.error(`기준점 샘플 부족 (${xSamples.length}/50) — 동공 검출 상태를 확인해주세요`);
-        }
-
-        setLoading(false);
-        setProgress(0);
     };
 
     const handleMeasure = async () => {
@@ -551,65 +611,77 @@ export default function XaxisCali() {
             return;
         }
 
-        const xSamples = [];
-        const ySamples = [];
-        setProgress(0); // ✅ 초기화
-        setProgressCount(50);
-        setLoading(true);
-        for (let i = 0; i < 50; i++) {
-            const result = await getOneFramePupilDetect(60);
-            // 동공 절대 좌표 수집 (검출 실패 시 null → 제외)
-            if (result && result.x != null && result.y != null) {
-                xSamples.push(result.x);
-                ySamples.push(result.y);
+        let failure = null;
+        try {
+            const xSamples = [];
+            const ySamples = [];
+            setProgress(0); // ✅ 초기화
+            setProgressCount(50);
+            setLoading(true);
+            for (let i = 0; i < 50; i++) {
+                if (!mountedRef.current) return;
+                const result = await getOneFramePupilDetect(60);
+                // 동공 절대 좌표 수집 (검출 실패 시 null → 제외)
+                if (result && result.x != null && result.y != null) {
+                    xSamples.push(result.x);
+                    ySamples.push(result.y);
+                }
+                setProgress(i + 1);
+                await new Promise((resolve) => setTimeout(resolve, 200));
             }
-            setProgress(i + 1);
-            await new Promise((resolve) => setTimeout(resolve, 200));
-        }
 
-        // 평균 좌표 → 기준점 대비 이동량 → mm 변환
-        if (xSamples.length >= 10) {
-            const avgX = median(xSamples);
-            const avgY = median(ySamples);
+            // 평균 좌표 → 기준점 대비 이동량 → mm 변환
+            if (xSamples.length >= 10) {
+                const avgX = median(xSamples);
+                const avgY = median(ySamples);
 
-            // 평균한 뒤에 보정 적용 (샘플별 적용 시 노이즈의 |y|가 누적되어 과대평가됨)
-            const dxPx = avgX - refPoint.x;
-            const dyPx = avgY - refPoint.y;
-            const deltaPx = calculateCorrectedX(dxPx, dyPx);
+                // 평균한 뒤에 보정 적용 (샘플별 적용 시 노이즈의 |y|가 누적되어 과대평가됨)
+                const dxPx = avgX - refPoint.x;
+                const dyPx = avgY - refPoint.y;
+                const deltaPx = calculateCorrectedX(dxPx, dyPx);
 
-            const scale = parseFloat(LIMBUS_MM) / parseFloat(LIMBUS_PX);
-            let avgMm;
-            if (scale > 0) {
-                avgMm = deltaPx * scale;
+                const scale = parseFloat(LIMBUS_MM) / parseFloat(LIMBUS_PX);
+                let avgMm;
+                if (scale > 0) {
+                    avgMm = deltaPx * scale;
+                } else {
+                    avgMm = 0;
+                    toast.error("LIMBUS_MM과 LIMBUS_PX 값을 확인해주세요");
+                }
+
+                // 성분 데이터 보존 (저장 시 delta_x와 함께 기록)
+                lastDetailRef.current = {
+                    dx_px: parseFloat(dxPx.toFixed(2)),
+                    dy_px: parseFloat(dyPx.toFixed(2)),
+                    dx_mm: parseFloat((dxPx * scale).toFixed(4)),
+                    dy_mm: parseFloat((dyPx * scale).toFixed(4)),
+                    ref_x: parseFloat(refPoint.x.toFixed(2)),
+                    ref_y: parseFloat(refPoint.y.toFixed(2)),
+                    samples: xSamples.length,
+                    // 이 측정에 실제로 적용된 윤부 스케일 — 세션 간 배율 차이를 사후 검증할 때 필요
+                    limbus_px: parseFloat(parseFloat(LIMBUS_PX).toFixed(2)),
+                    limbus_mm: parseFloat(parseFloat(LIMBUS_MM).toFixed(2)),
+                };
+
+                setFormData((prev) => ({
+                    ...prev,
+                    delta_x: avgMm.toFixed(3),
+                }));
+                toast.success(`측정 완료 (${xSamples.length}/50 샘플)`);
             } else {
-                avgMm = 0;
-                toast.error("LIMBUS_MM과 LIMBUS_PX 값을 확인해주세요");
+                failure = `유효 샘플 부족 (${xSamples.length}/50) — 동공 검출 상태를 확인해주세요`;
             }
-
-            // 성분 데이터 보존 (저장 시 delta_x와 함께 기록)
-            lastDetailRef.current = {
-                dx_px: parseFloat(dxPx.toFixed(2)),
-                dy_px: parseFloat(dyPx.toFixed(2)),
-                dx_mm: parseFloat((dxPx * scale).toFixed(4)),
-                dy_mm: parseFloat((dyPx * scale).toFixed(4)),
-                ref_x: parseFloat(refPoint.x.toFixed(2)),
-                ref_y: parseFloat(refPoint.y.toFixed(2)),
-                samples: xSamples.length,
-                // 이 측정에 실제로 적용된 윤부 스케일 — 세션 간 배율 차이를 사후 검증할 때 필요
-                limbus_px: parseFloat(parseFloat(LIMBUS_PX).toFixed(2)),
-                limbus_mm: parseFloat(parseFloat(LIMBUS_MM).toFixed(2)),
-            };
-
-            setFormData((prev) => ({
-                ...prev,
-                delta_x: avgMm.toFixed(3),
-            }));
-            toast.success(`측정 완료 (${xSamples.length}/50 샘플)`);
-        } else {
-            toast.error(`유효 샘플 부족 (${xSamples.length}/50) — 동공 검출 상태를 확인해주세요`);
+        } catch (error) {
+            failure = error.message;
+        } finally {
+            setLoading(false);
+            setProgress(0);
+            if (failure)
+                dialog.alert({
+                    title: "샘플 측정 실패",
+                    message: `${failure}\n스트림과 동공 검출 상태를 확인한 뒤 다시 측정하세요.`,
+                });
         }
-        setLoading(false);
-        setProgress(0);
     };
 
     const startStreaming = async () => {
@@ -617,14 +689,23 @@ export default function XaxisCali() {
             return;
         }
 
+        // 이 스트림이 어느 서버로 열렸는지 기억해 둔다 — 언마운트 정리는 그 주소로 stop 을 보낸다(화면 생존 중 IP 가 바뀌어도, Codex 5차 E6)
+        const apiUrl = API_URL;
+        const gen = ++startGenRef.current;
         await axios({
-            url: `${API_URL}/api/live`,
+            url: `${apiUrl}/api/live`,
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
             },
             timeout: 5000,
         });
+        // 응답을 기다리는 사이 화면을 떠났거나 다시 시작했으면, 방금 켠 서버 스트림만 끄고 WS 는 만들지 않는다 (Codex 5차 E5)
+        if (!mountedRef.current || gen !== startGenRef.current) {
+            fetch(`${apiUrl}/api/stop`).catch(() => {});
+            return;
+        }
+        streamApiUrlRef.current = apiUrl;
 
         const wsClient = new EyeWsClient(SOCKET_URL);
         wsClientRef.current = wsClient;
@@ -668,10 +749,21 @@ export default function XaxisCali() {
     };
 
     useEffect(() => {
-        // 언마운트
+        // 언마운트: stopStreaming 은 마운트 시점 클로저라 isStreaming 이 항상 false 로 보여 아무것도 안 했다 → WS 가 영원히 열려
+        // 25fps×2 메시지를 계속 파싱하고 서버 스트림도 그대로였다 (RISK 리뷰 양쪽). ref 만 보고 무조건 정리한다.
         return () => {
-            stopStreaming();
+            mountedRef.current = false;
+            startGenRef.current += 1;
+            liveUnsubscribeRef.current?.();
+            liveUnsubscribeRef.current = null;
+            const ws = wsClientRef.current;
+            wsClientRef.current = null;
+            if (ws) {
+                ws.disconnect();
+                fetch(`${streamApiUrlRef.current ?? API_URL}/api/stop`).catch(() => {});
+            }
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
@@ -793,12 +885,16 @@ export default function XaxisCali() {
                     <div className="relative" />
                     <div className="">
                         {resultImage2 && (
-                            <img src={resultImage2} alt="Distance Measurement Result" className="w-full bg-black" />
+                            <PupilShot
+                                base64={resultImage2.base64}
+                                overlay={resultImage2.overlay}
+                                className="w-full bg-black"
+                            />
                         )}
                     </div>
                 </div>
 
-                {/* 윤부 측정 팝업 — 캔버스가 원본 해상도(1280) 1:1이라 7xl로 넓힌다 */}
+                {/* 윤부 측정 팝업 — 캔버스는 이미지 해상도(640×360) 1:1. 잰 px 는 onLimbusComplete 에서 좌표(720p) px 로 환산 */}
                 {resultImage && (
                     <Popup
                         width="full"
@@ -812,7 +908,7 @@ export default function XaxisCali() {
                             <LimbusLineMeasure
                                 imageSource={resultImage}
                                 pupilCenter={pupilCenter}
-                                initialDiameter={parseFloat(LIMBUS_PX) > 10 ? parseFloat(LIMBUS_PX) : null}
+                                initialDiameter={parseFloat(LIMBUS_PX) > 10 ? parseFloat(LIMBUS_PX) / shotScale : null}
                                 onComplete={onLimbusComplete}
                             />
                         </div>

@@ -8,7 +8,6 @@ export default function A4Page({ children, className = "" }) {
                 w-full max-w-[210mm] 
                 min-h-[297mm]
                 print:min-h-0
-                mx-auto 
                 p-8
                 shadow-lg
                 print:shadow-none

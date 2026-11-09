@@ -358,19 +358,19 @@ export const createFirstTrueRegionFilter = () => {
     let firstRegionEnded = false;
     let sawTrue = false;
 
-    return (isHide) => {
-        if (firstRegionEnded) return isHide;
+    return (visible) => {
+        if (firstRegionEnded) return visible;
 
-        if (isHide === true) {
+        if (visible === true) {
             sawTrue = true;
             return false;
         }
 
-        if (isHide === false && sawTrue) {
+        if (visible === false && sawTrue) {
             firstRegionEnded = true;
         }
 
-        return isHide;
+        return visible;
     };
 };
 
@@ -382,19 +382,19 @@ export const createResettableFirstTrueRegionFilter = () => {
     let sawTrue = false;
 
     return {
-        process: (isHide) => {
-            if (firstRegionEnded) return isHide;
+        process: (visible) => {
+            if (firstRegionEnded) return visible;
 
-            if (isHide === true) {
+            if (visible === true) {
                 sawTrue = true;
                 return false;
             }
 
-            if (isHide === false && sawTrue) {
+            if (visible === false && sawTrue) {
                 firstRegionEnded = true;
             }
 
-            return isHide;
+            return visible;
         },
         reset: () => {
             firstRegionEnded = false;

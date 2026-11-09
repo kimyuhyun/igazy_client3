@@ -15,7 +15,7 @@ export default function MySlider({ max_frame, currentFrameRef, onCurrent, isPlay
                 valueRef.current = current;
                 setValue(current);
             }
-        }, 16); // 60fps
+        }, 1000 / 15); // 표시만 초당 15회 갱신. 실제 재생 속도는 부모 페이지에서 제어한다.
 
         return () => clearInterval(interval);
     }, [currentFrameRef]);
