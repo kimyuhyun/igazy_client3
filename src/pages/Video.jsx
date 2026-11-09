@@ -94,6 +94,7 @@ export default function Video({ bare = false }) {
     // 뷰어(2026-11-09): 폰에서 공유한 ZIP 을 이 화면에 끌어다 놓으면 브라우저에 저장하고 목록에 올린다.
     // dragging = 파일을 끌고 있는 중
     const [dragging, setDragging] = useState(false);
+    const importInputRef = useRef(null);
     const [colorSettingsOpen, setColorSettingsOpen] = useState(false);
     // 가져오기 배치 잠금(겹친 드롭이 조용히 빠지지 않게) · 저장 대기 중인 가져온 경로 · 저장 전에 사용자가 지운 가져온 경로
     const importingRef = useRef(false);
@@ -1072,9 +1073,29 @@ export default function Video({ bare = false }) {
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
                         {/* 가져오기는 끌어다 놓기만(2026-11-09 사용자 결정: 버튼 없음) — 놓을 수 있다는 것만 글로 알린다 */}
-                        <span className="text-[var(--video-muted)]">
+                        <span className="[@media(pointer:coarse)]:hidden text-[var(--video-muted)]">
                             결과 ZIP 파일을 이 화면에 끌어다 놓으면 목록에 저장합니다
                         </span>
+                        {/* 태블릿·폰은 끌어다 놓기를 못 하니 터치 기기에서만 버튼을 보인다 */}
+                        <input
+                            ref={importInputRef}
+                            type="file"
+                            accept=".zip,application/zip"
+                            multiple
+                            hidden
+                            onChange={(e) => {
+                                const files = Array.from(e.target.files ?? []);
+                                e.target.value = ""; // 같은 파일을 다시 골라도 change 가 나게
+                                importZipFiles(files);
+                            }}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => importInputRef.current?.click()}
+                            className={`${listButtonClass} hidden [@media(pointer:coarse)]:inline-block bg-neutral-900 text-white hover:bg-neutral-700`}
+                        >
+                            ZIP 가져오기
+                        </button>
                         {cachedFiles.size > 0 && storageInfo && (
                             <button
                                 onClick={handleClearAllCache}
